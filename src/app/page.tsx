@@ -74,7 +74,7 @@ export default function HomePage() {
         <article className="rounded-2xl border border-line bg-sheet p-5">
           <h2 className="font-serif text-2xl">接上模型就切换</h2>
           <p className="mt-2 leading-7 text-ink-soft">
-            配置 OpenAI 兼容接口后走模型提取。地址必须带 /v1。模型超时、报错或返回无法识别的内容时，自动退回离线解析，并在结果页写明原因。
+            默认对接 DeepSeek。填上 API key 后走模型提取，地址必须带 /v1。超时、报错或返回无法识别的内容时，自动退回离线解析，并在结果页写明原因。
           </p>
         </article>
       </section>

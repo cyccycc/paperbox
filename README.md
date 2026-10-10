@@ -25,13 +25,27 @@ npm run dev
 | --- | --- |
 | `DATABASE_URL` | SQLite 连接串，默认 `file:./dev.db`（相对 `prisma/` 目录） |
 | `AUTH_SECRET` | 登录会话签名。生产环境请换成足够长的随机字符串 |
-| `OPENAI_API_KEY` | 留空则只用离线解析 |
-| `OPENAI_BASE_URL` | OpenAI 兼容接口根路径，**必须包含 `/v1`**，例如 `https://api.openai.com/v1` |
-| `OPENAI_MODEL` | 模型名，默认 `gpt-4o-mini` |
+| `OPENAI_API_KEY` | DeepSeek（或其他 OpenAI 兼容服务）的密钥。留空则只用离线解析 |
+| `OPENAI_BASE_URL` | OpenAI 兼容接口根路径，**必须包含 `/v1`**。默认 `https://api.deepseek.com/v1` |
+| `OPENAI_MODEL` | 模型名。默认 `deepseek-flash`（当前推荐的 DeepSeek 对话模型） |
 | `FREE_QUOTA` | 新用户免费成功提取次数，默认 `10`。注册时写入账号，之后改这个值不会改已有账号 |
 | `ADMIN_GRANT_SECRET` | 可选。测试发放额度用的口令，**不是**支付商户密钥。留空则管理接口关闭 |
 
 纸匣请求 `${OPENAI_BASE_URL}/chat/completions`，不会再追加一层 `/v1`。
+
+## 接入 DeepSeek
+
+默认提供方是 [DeepSeek](https://api-docs.deepseek.com/)。`deepseek-chat` 已于 2026-07-24 停用，示例里用的是当前推荐的对话模型 `deepseek-flash`。
+
+1. 打开 [DeepSeek 开放平台](https://platform.deepseek.com/api_keys)，登录后创建 API key。
+2. 如果还没有 `.env`，从示例复制一份：`cp .env.example .env`。
+3. 把密钥填进 `OPENAI_API_KEY`。`OPENAI_BASE_URL` 和 `OPENAI_MODEL` 可以保持示例中的默认值。
+4. 重启进程。`npm run dev` 只在启动时读取 `.env`，改完密钥后需要停掉再开一次。
+5. 重新打开工作台。密钥已填写且地址指向 DeepSeek 时，页顶显示 **DeepSeek**；密钥留空时显示 **离线**。
+
+调用产生的费用由运行纸匣的人支付：DeepSeek 按 token 从该 API key 的账户余额扣费。使用网页的人沿用服务器上的这一把密钥。用量和余额在 DeepSeek 控制台查看。不要把真实密钥写进仓库或提交到 git。
+
+换别的 OpenAI 兼容接口时，改 `OPENAI_BASE_URL`（仍须以 `/v1` 结尾）和 `OPENAI_MODEL` 即可。指向 `api.deepseek.com` 时，请求会关闭思考模式（`thinking.type=disabled`，`reasoning_effort=none`），这样温度 0 会生效，JSON 出现在 `message.content` 里，并尽量在超时前返回。
 
 ## 额度
 
@@ -69,8 +83,8 @@ curl -X POST http://localhost:3000/api/admin/credits \
 
 ## 离线解析与模型
 
-- **离线**：`OPENAI_API_KEY` 为空。按标签和表格做确定性解析，同一份文本每次结果相同。结果页会说明当前是离线解析。
-- **模型**：密钥非空，且 `OPENAI_BASE_URL` 以 `/v1` 结尾。温度固定为 0，要求只输出 JSON，不补充原文没有的事实。
+- **离线**：`OPENAI_API_KEY` 为空。按标签和表格做确定性解析，同一份文本每次结果相同。结果页和工作台都会说明当前是离线解析。
+- **模型**：密钥非空，且 `OPENAI_BASE_URL` 以 `/v1` 结尾。温度固定为 0，要求只输出 json，不补充原文没有的事实。
 - **回退**：密钥已配置，但地址不合法、网络失败、接口报错、超时或返回无法识别的内容时，改用离线解析。结果页用警告写出原因，例如 `模型未能完成提取，已改用离线解析。原因：…`。
 - 简历若勾选「润色表述（不编造事实）」，整理稿只重组已有信息。模型润色如果出现原文没有的数字，会改回离线整理稿并在结果页说明。
 

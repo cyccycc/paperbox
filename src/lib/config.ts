@@ -13,8 +13,8 @@ export type OpenAIConfig = {
   baseUrlError: string | null;
 };
 
-const DEFAULT_BASE_URL = "https://api.openai.com/v1";
-const DEFAULT_MODEL = "gpt-4o-mini";
+const DEFAULT_BASE_URL = "https://api.deepseek.com/v1";
+const DEFAULT_MODEL = "deepseek-flash";
 
 export function getOpenAIConfig(env?: OpenAIEnv): OpenAIConfig {
   const source = env ?? process.env;
@@ -32,8 +32,34 @@ export function getOpenAIConfig(env?: OpenAIEnv): OpenAIConfig {
     baseUrlOk,
     baseUrlError: baseUrlOk
       ? null
-      : "OPENAI_BASE_URL 必须以 /v1 结尾，例如 https://api.openai.com/v1",
+      : "OPENAI_BASE_URL 必须以 /v1 结尾，例如 https://api.deepseek.com/v1",
   };
+}
+
+export function isDeepSeekEndpoint(baseUrl: string): boolean {
+  try {
+    const host = new URL(baseUrl).hostname.toLowerCase();
+    return host === "api.deepseek.com" || host.endsWith(".deepseek.com");
+  } catch {
+    return false;
+  }
+}
+
+export type RuntimeMode = {
+  id: "offline" | "deepseek" | "model";
+  label: "离线" | "DeepSeek" | "模型";
+  model: string | null;
+};
+
+export function runtimeMode(env?: OpenAIEnv): RuntimeMode {
+  const config = getOpenAIConfig(env);
+  if (!config.enabled || !config.baseUrlOk) {
+    return { id: "offline", label: "离线", model: null };
+  }
+  if (isDeepSeekEndpoint(config.baseUrl) || /^deepseek(?:-|$)/i.test(config.model)) {
+    return { id: "deepseek", label: "DeepSeek", model: config.model };
+  }
+  return { id: "model", label: "模型", model: config.model };
 }
 
 export function chatCompletionsUrl(baseUrl: string): string {
