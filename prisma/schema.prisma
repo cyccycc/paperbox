@@ -8,11 +8,15 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String         @id @default(cuid())
+  email        String         @unique
   passwordHash String
-  createdAt    DateTime @default(now())
+  /// Remaining successful parses. Existing rows receive 10; registration sets FREE_QUOTA.
+  credits      Int            @default(10)
+  createdAt    DateTime       @default(now())
   jobs         Job[]
+  orders       Order[]
+  ledger       CreditLedger[]
 }
 
 model Job {
@@ -29,6 +33,37 @@ model Job {
   resultJson     String?
   rewrite        Boolean  @default(false)
   createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+/// Placeholder checkout. pending orders do not add credits.
+model Order {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  packId      String
+  credits     Int
+  amountCents Int
+  currency    String   @default("CNY")
+  channel     String
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, createdAt])
+}
+
+model CreditLedger {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  delta     Int
+  reason    String
+  jobId     String?  @unique
+  orderId   String?  @unique
+  note      String?
+  createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
 }

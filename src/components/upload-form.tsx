@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { QUOTA_EXHAUSTED_CODE } from "@/lib/billing";
 
 const TYPES = [
   {
@@ -25,20 +27,27 @@ const TYPES = [
 
 type DocId = (typeof TYPES)[number]["id"];
 
-export function UploadForm() {
+export function UploadForm({ credits }: { credits: number }) {
   const [type, setType] = useState<DocId>("invoice");
   const [rewrite, setRewrite] = useState(true);
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState("");
+  const [blocked, setBlocked] = useState(credits < 1);
 
   async function submit(form: FormData, label: string) {
     setError("");
     setPending(label);
     const response = await fetch("/api/jobs", { method: "POST", body: form });
-    const payload = (await response.json().catch(() => null)) as { id?: string; error?: string } | null;
+    const payload = (await response.json().catch(() => null)) as { id?: string; error?: string; code?: string } | null;
     if (response.status === 401) {
       window.location.href = "/login";
+      return;
+    }
+    if (payload?.code === QUOTA_EXHAUSTED_CODE) {
+      setPending("");
+      setBlocked(true);
+      setError("");
       return;
     }
     if (!response.ok || !payload?.id) {
@@ -51,6 +60,7 @@ export function UploadForm() {
 
   async function onUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (blocked) return;
     const form = new FormData(event.currentTarget);
     form.set("type", type);
     if (type === "resume" && rewrite) form.set("rewrite", "1");
@@ -64,6 +74,7 @@ export function UploadForm() {
   }
 
   async function runSample(sampleType: DocId) {
+    if (blocked) return;
     const form = new FormData();
     form.set("type", sampleType);
     form.set("sample", "1");
@@ -74,7 +85,18 @@ export function UploadForm() {
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 md:grid-cols-3">
+      {blocked ? (
+        <div className="rounded-2xl border border-seal/30 bg-warn-soft px-5 py-4" role="status">
+          <p className="font-medium text-warn">额度已用完，上传已暂停。</p>
+          <p className="mt-1 text-sm leading-6 text-ink-soft">成功提取才会消耗 1 次额度。购买额度后可以继续上传发票、合同或简历，也可以使用示例。</p>
+          <Link href="/billing" className="mt-3 inline-block rounded-full bg-seal px-4 py-2 text-sm text-white hover:bg-seal-deep">
+            购买额度
+          </Link>
+        </div>
+      ) : (
+        <p className="text-sm text-ink-soft">本次成功提取会消耗 1 次，当前剩余 {credits} 次。使用示例同样消耗 1 次。</p>
+      )}
+      <div className={`grid gap-3 md:grid-cols-3 ${blocked ? "opacity-60" : ""}`}>
         {TYPES.map((item) => {
           const selected = type === item.id;
           return (
@@ -90,7 +112,7 @@ export function UploadForm() {
               <button
                 className="mt-4 rounded-full border border-line px-3 py-1.5 text-sm hover:border-seal hover:text-seal disabled:opacity-60"
                 type="button"
-                disabled={Boolean(pending)}
+                disabled={Boolean(pending) || blocked}
                 onClick={() => runSample(item.id)}
               >
                 使用示例
@@ -114,6 +136,7 @@ export function UploadForm() {
             name="file"
             type="file"
             accept=".txt,.md,.markdown,.pdf,text/plain,text/markdown,application/pdf"
+            disabled={blocked}
             onChange={(event) => setFileName(event.target.files?.[0]?.name ?? "")}
           />
         </label>
@@ -123,6 +146,7 @@ export function UploadForm() {
               className="mt-1"
               type="checkbox"
               checked={rewrite}
+              disabled={blocked}
               onChange={(event) => setRewrite(event.target.checked)}
             />
             <span>
@@ -136,13 +160,19 @@ export function UploadForm() {
             {error}
           </p>
         ) : null}
-        <button
-          className="rounded-full bg-ink px-5 py-2.5 text-sm text-paper hover:bg-seal disabled:opacity-60"
-          type="submit"
-          disabled={Boolean(pending)}
-        >
-          {pending || "开始提取"}
-        </button>
+        {blocked ? (
+          <Link href="/billing" className="inline-block rounded-full bg-seal px-5 py-2.5 text-sm text-white hover:bg-seal-deep">
+            购买额度
+          </Link>
+        ) : (
+          <button
+            className="rounded-full bg-ink px-5 py-2.5 text-sm text-paper hover:bg-seal disabled:opacity-60"
+            type="submit"
+            disabled={Boolean(pending)}
+          >
+            {pending || "开始提取"}
+          </button>
+        )}
       </form>
       <p className="text-sm leading-6 text-ink-soft">
         「使用示例」会直接解析 samples 里的中文 TXT。也可以自行上传同目录的 Markdown，或带文字层的英文发票 PDF

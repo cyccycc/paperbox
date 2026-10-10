@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { getSession } from "@/lib/current-user";
+import { prisma } from "@/lib/db";
 
 export async function Header() {
   const session = await getSession();
+  const credits = session
+    ? (await prisma.user.findUnique({ where: { id: session.uid }, select: { credits: true } }))?.credits
+    : undefined;
 
   return (
     <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-5 py-5">
@@ -15,10 +19,18 @@ export async function Header() {
           <span className="mt-1 block text-xs tracking-wide text-ink-soft">Paperbox</span>
         </span>
       </Link>
-      <nav className="flex items-center gap-2 text-sm">
+      <nav className="flex flex-wrap items-center justify-end gap-2 text-sm">
         {session ? (
           <>
             <span className="hidden max-w-48 truncate text-ink-soft sm:inline">{session.email}</span>
+            {typeof credits === "number" ? (
+              <Link
+                href="/billing"
+                className="rounded-full border border-line bg-sheet px-3 py-2 hover:border-seal hover:text-seal"
+              >
+                {credits === 0 ? "购买额度" : `剩余 ${credits} 次`}
+              </Link>
+            ) : null}
             <Link href="/dashboard" className="rounded-full px-3 py-2 hover:bg-white/70">
               工作台
             </Link>

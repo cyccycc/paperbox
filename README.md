@@ -28,6 +28,8 @@ npm run dev
 | `OPENAI_API_KEY` | DeepSeek（或其他 OpenAI 兼容服务）的密钥。留空则只用离线解析 |
 | `OPENAI_BASE_URL` | OpenAI 兼容接口根路径，**必须包含 `/v1`**。默认 `https://api.deepseek.com/v1` |
 | `OPENAI_MODEL` | 模型名。默认 `deepseek-flash`（当前推荐的 DeepSeek 对话模型） |
+| `FREE_QUOTA` | 新用户免费成功提取次数，默认 `10`。注册时写入账号，之后改这个值不会改已有账号 |
+| `ADMIN_GRANT_SECRET` | 可选。测试发放额度用的口令，**不是**支付商户密钥。留空则管理接口关闭 |
 
 纸匣请求 `${OPENAI_BASE_URL}/chat/completions`，不会再追加一层 `/v1`。
 
@@ -44,6 +46,40 @@ npm run dev
 调用产生的费用由运行纸匣的人支付：DeepSeek 按 token 从该 API key 的账户余额扣费。使用网页的人沿用服务器上的这一把密钥。用量和余额在 DeepSeek 控制台查看。不要把真实密钥写进仓库或提交到 git。
 
 换别的 OpenAI 兼容接口时，改 `OPENAI_BASE_URL`（仍须以 `/v1` 结尾）和 `OPENAI_MODEL` 即可。指向 `api.deepseek.com` 时，请求会关闭思考模式（`thinking.type=disabled`，`reasoning_effort=none`），这样温度 0 会生效，JSON 出现在 `message.content` 里，并尽量在超时前返回。
+
+## 额度
+
+新用户按 `FREE_QUOTA` 获得免费次数（默认 10）。发票、合同、简历每次**成功**提取消耗 1 次，使用示例也算。读不出文字的 PDF 会留下记录，但不扣额度。工作台显示剩余次数。
+
+剩余 0 次时，上传和示例都会停住，并给出「购买额度」。额度页 `/billing` 列出 50 次（参考价 ¥29）和 200 次（参考价 ¥99）。「微信支付」「支付宝」只在数据库里创建状态为 `pending` 的订单，并提示「支付通道即将开通」。没有真实扣款，也不需要商户密钥。待支付订单不会增加额度。
+
+已有账号在这次迁移里会得到 10 次，和当时的 `FREE_QUOTA` 无关。
+
+测试补额度（需要已有账号，以及 `.env` 里的 `DATABASE_URL`）：
+
+```bash
+npm run grant -- user@example.com 50
+```
+
+也可以调用管理接口。`ADMIN_GRANT_SECRET` 留空时该接口返回 404。
+
+```bash
+curl -X POST http://localhost:3000/api/admin/credits \
+  -H "Authorization: Bearer $ADMIN_GRANT_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","credits":50}'
+```
+
+把一笔待支付订单标成已支付（会按订单次数入账，同一订单不会重复入账）：
+
+```bash
+curl -X POST http://localhost:3000/api/admin/credits \
+  -H "Authorization: Bearer $ADMIN_GRANT_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"orderId":"<订单号>","action":"mark_paid"}'
+```
+
+`action` 还可以是 `cancel`（已支付的订单不能取消）。订单状态为 `pending`、`paid`、`cancelled`。
 
 ## 离线解析与模型
 
@@ -81,8 +117,9 @@ npm run lint
 
 ## 目录
 
-- `src/app`：页面与接口（注册、登录、工作台、结果、下载）
+- `src/app`：页面与接口（注册、登录、工作台、额度、结果、下载）
 - `src/lib/parsers`：离线解析
 - `src/lib/extract.ts`：模型调用与回退
+- `src/lib/quota.ts`：免费额度、扣次、待支付订单
 - `prisma/`：SQLite 模型与迁移
 - `uploads/`：上传文件，不入库

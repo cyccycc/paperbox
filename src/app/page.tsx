@@ -26,7 +26,7 @@ export default function HomePage() {
           <p className="text-sm tracking-[0.18em] text-seal">文档进，字段出</p>
           <h1 className="mt-3 font-serif text-5xl leading-tight sm:text-6xl">把发票、合同和简历收成能导出的结果。</h1>
           <p className="mt-5 max-w-xl text-lg leading-8 text-ink-soft">
-            纸匣读取你上传的文本，抽出结构化字段。发票做成 Excel，合同和简历做成 Markdown。没有模型密钥时，示例文档用离线解析也能走完。
+            纸匣读取你上传的文本，抽出结构化字段。发票做成 Excel，合同和简历做成 Markdown。新用户有免费提取次数。没有模型密钥时，示例文档用离线解析也能走完。
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link href="/register" className="rounded-full bg-seal px-5 py-2.5 text-white hover:bg-seal-deep">
