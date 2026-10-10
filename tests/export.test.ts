@@ -3,7 +3,7 @@ import test from "node:test";
 import ExcelJS from "exceljs";
 import { invoiceToXlsx } from "../src/lib/export/invoice-xlsx";
 import { contractToMarkdown, resumeToMarkdown } from "../src/lib/export/markdown";
-import { chatCompletionsUrl, getOpenAIConfig } from "../src/lib/config";
+import { chatCompletionsUrl, getOpenAIConfig, runtimeMode } from "../src/lib/config";
 import type { ContractData, InvoiceData, ResumeData } from "../src/lib/types";
 
 test("openAI base URL keeps a single /v1", () => {
@@ -14,9 +14,30 @@ test("openAI base URL keeps a single /v1", () => {
   });
   assert.equal(config.baseUrl, "https://api.openai.com/v1");
   assert.equal(config.baseUrlOk, true);
-  assert.equal(config.model, "gpt-4o-mini");
+  assert.equal(config.model, "deepseek-flash");
   assert.equal(chatCompletionsUrl(config.baseUrl), "https://api.openai.com/v1/chat/completions");
-  assert.equal(getOpenAIConfig({ OPENAI_API_KEY: "  " }).enabled, false);
+  const unset = getOpenAIConfig({ OPENAI_API_KEY: "  " });
+  assert.equal(unset.enabled, false);
+  assert.equal(unset.baseUrl, "https://api.deepseek.com/v1");
+  assert.equal(unset.model, "deepseek-flash");
+  assert.deepEqual(runtimeMode({ OPENAI_API_KEY: "" }), { id: "offline", label: "离线", model: null });
+  assert.deepEqual(runtimeMode({ OPENAI_API_KEY: "sk-test" }), {
+    id: "deepseek",
+    label: "DeepSeek",
+    model: "deepseek-flash",
+  });
+  assert.equal(
+    runtimeMode({ OPENAI_API_KEY: "sk-test", OPENAI_BASE_URL: "https://api.deepseek.com" }).id,
+    "offline",
+  );
+  assert.deepEqual(
+    runtimeMode({
+      OPENAI_API_KEY: "sk-test",
+      OPENAI_BASE_URL: "https://api.openai.com/v1",
+      OPENAI_MODEL: "gpt-4o-mini",
+    }),
+    { id: "model", label: "模型", model: "gpt-4o-mini" },
+  );
 });
 
 test("invoice workbook keeps fields and neutralizes formula text", async () => {

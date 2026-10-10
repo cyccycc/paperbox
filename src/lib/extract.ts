@@ -59,5 +59,5 @@ export async function extractFields(
 
 export function offlineBanner(reason: string | null): string {
   if (reason) return `模型未能完成提取，已改用离线解析。原因：${clip(reason, 240)}`;
-  return "未检测到 OPENAI_API_KEY，已使用离线解析。配置密钥后将改走模型。";
+  return "未检测到 OPENAI_API_KEY，已使用离线解析。在 .env 写入 DeepSeek 密钥并重启后将改走模型。";
 }
