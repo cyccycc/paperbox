@@ -73,28 +73,18 @@ export function UploadForm({ credits }: { credits: number }) {
     await submit(form, "正在提取…");
   }
 
-  async function runSample(sampleType: DocId) {
-    if (blocked) return;
-    const form = new FormData();
-    form.set("type", sampleType);
-    form.set("sample", "1");
-    if (sampleType === "resume" && rewrite) form.set("rewrite", "1");
-    setType(sampleType);
-    await submit(form, "正在解析示例…");
-  }
-
   return (
     <div className="space-y-5">
       {blocked ? (
         <div className="rounded-2xl border border-seal/30 bg-warn-soft px-5 py-4" role="status">
           <p className="font-medium text-warn">额度已用完，上传已暂停。</p>
-          <p className="mt-1 text-sm leading-6 text-ink-soft">成功提取才会消耗 1 次额度。购买额度后可以继续上传发票、合同或简历，也可以使用示例。</p>
+          <p className="mt-1 text-sm leading-6 text-ink-soft">成功提取才会消耗 1 次额度。购买额度后可以继续上传发票、合同或简历。</p>
           <Link href="/billing" className="mt-3 inline-block rounded-full bg-seal px-4 py-2 text-sm text-white hover:bg-seal-deep">
             购买额度
           </Link>
         </div>
       ) : (
-        <p className="text-sm text-ink-soft">本次成功提取会消耗 1 次，当前剩余 {credits} 次。使用示例同样消耗 1 次。</p>
+        <p className="text-sm text-ink-soft">本次成功提取会消耗 1 次，当前剩余 {credits} 次。</p>
       )}
       <div className={`grid gap-3 md:grid-cols-3 ${blocked ? "opacity-60" : ""}`}>
         {TYPES.map((item) => {
@@ -108,14 +98,6 @@ export function UploadForm({ credits }: { credits: number }) {
                 <span className="text-xs tracking-wide text-ink-soft">{item.exportAs}</span>
                 <span className="mt-1 block font-serif text-2xl">{item.label}</span>
                 <span className="mt-2 block text-sm leading-6 text-ink-soft">{item.blurb}</span>
-              </button>
-              <button
-                className="mt-4 rounded-full border border-line px-3 py-1.5 text-sm hover:border-seal hover:text-seal disabled:opacity-60"
-                type="button"
-                disabled={Boolean(pending) || blocked}
-                onClick={() => runSample(item.id)}
-              >
-                使用示例
               </button>
             </div>
           );
@@ -151,7 +133,7 @@ export function UploadForm({ credits }: { credits: number }) {
             />
             <span>
               润色表述（不编造事实）
-              <span className="mt-1 block text-ink-soft">只调整已有经历的写法，不会补充新的公司、时间或数字。示例也会遵守这个选项。</span>
+              <span className="mt-1 block text-ink-soft">只调整已有经历的写法，不会补充新的公司、时间或数字。</span>
             </span>
           </label>
         ) : null}
@@ -175,8 +157,7 @@ export function UploadForm({ credits }: { credits: number }) {
         )}
       </form>
       <p className="text-sm leading-6 text-ink-soft">
-        「使用示例」会直接解析 samples 里的中文 TXT。也可以自行上传同目录的 Markdown，或带文字层的英文发票 PDF
-        samples/invoice-en.pdf。扫描件 samples/scanned-no-text.pdf 没有可选中文字，结果页会说明并建议改用 TXT 或 Markdown。
+        支持 TXT、Markdown 和带文字层的 PDF。扫描件或纯图片 PDF 没有可选中文字时，结果页会说明原因，并建议改用 TXT 或 Markdown，且不扣除额度。
       </p>
     </div>
   );
