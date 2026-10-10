@@ -141,6 +141,77 @@ test("resume rewrite that invents numbers is replaced", async () => {
   assert.doesNotMatch(rewrite, /100|80/);
 });
 
+test("DeepSeek requests disable thinking and read JSON from message.content", async () => {
+  const result = await extractFields("invoice", invoiceText, false, {
+    env: env({
+      OPENAI_API_KEY: "sk-test",
+      OPENAI_BASE_URL: "https://api.deepseek.com/v1/",
+      OPENAI_MODEL: "deepseek-flash",
+    }),
+    fetchImpl: async (input, init) => {
+      assert.equal(String(input), "https://api.deepseek.com/v1/chat/completions");
+      const headers = new Headers(init?.headers);
+      assert.equal(headers.get("authorization"), "Bearer sk-test");
+      const body = JSON.parse(String(init?.body));
+      assert.equal(body.model, "deepseek-flash");
+      assert.equal(body.temperature, 0);
+      assert.equal(body.response_format.type, "json_object");
+      assert.deepEqual(body.thinking, { type: "disabled" });
+      assert.equal(body.reasoning_effort, "none");
+      assert.match(body.messages[0].content, /json/i);
+      return Response.json({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({ merchant: "深度商家", amount: "¥2.00", currency: "CNY", lineItems: [] }),
+              reasoning_content: "先看销售方",
+            },
+          },
+        ],
+      });
+    },
+  });
+  assert.equal(result.mode, "ai");
+  assert.equal(result.fallbackReason, null);
+  assert.equal((result.data as InvoiceData).merchant, "深度商家");
+});
+
+test("a failed DeepSeek call falls back to the offline parser", async () => {
+  const result = await extractFields("invoice", invoiceText, false, {
+    env: env({
+      OPENAI_API_KEY: "sk-test",
+      OPENAI_BASE_URL: "https://api.deepseek.com/v1",
+      OPENAI_MODEL: "deepseek-flash",
+    }),
+    fetchImpl: async () => Response.json({ error: { message: "Insufficient Balance" } }, { status: 402 }),
+  });
+  assert.equal(result.mode, "offline");
+  assert.match(result.fallbackReason ?? "", /402/);
+  assert.match(result.fallbackReason ?? "", /Insufficient Balance/);
+  assert.equal((result.data as InvoiceData).merchant, "离线商家");
+});
+
+test("non-DeepSeek requests omit thinking controls", async () => {
+  const result = await extractFields("invoice", invoiceText, false, {
+    env: env({
+      OPENAI_API_KEY: "sk-test",
+      OPENAI_BASE_URL: "https://api.openai.com/v1",
+      OPENAI_MODEL: "gpt-4o-mini",
+    }),
+    fetchImpl: async (_input, init) => {
+      const body = JSON.parse(String(init?.body));
+      assert.equal(body.model, "gpt-4o-mini");
+      assert.equal(body.thinking, undefined);
+      assert.equal(body.reasoning_effort, undefined);
+      return Response.json({
+        choices: [{ message: { content: JSON.stringify({ merchant: "开放商家", amount: "¥3" }) } }],
+      });
+    },
+  });
+  assert.equal(result.mode, "ai");
+  assert.equal((result.data as InvoiceData).merchant, "开放商家");
+});
+
 test("parseJsonLoose reads a JSON object wrapped in prose", () => {
   const parsed = parseJsonLoose('结果如下：{"merchant":"甲"} 完');
   assert.deepEqual(parsed, { merchant: "甲" });

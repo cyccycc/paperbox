@@ -43,7 +43,7 @@ export function systemPrompt(type: DocType, rewrite: boolean): string {
     ? "用户要求润色简历。rewriteMarkdown 只能重组原文里已经出现的信息，不能补充新事实。"
     : "不要输出原文没有的字段值。缺失就用空字符串或空数组。";
   return [
-    "你是纸匣的文档字段提取器。只根据用户给出的文档文本输出一个 JSON 对象，不要 Markdown 代码块，不要解释。",
+    "你是纸匣的文档字段提取器。只根据用户给出的文档文本输出一个 json 对象，不要 Markdown 代码块，不要解释。",
     "禁止编造文档中不存在的公司、金额、日期、税号、条款或经历。",
     rewriteRule,
     "JSON 形状：",

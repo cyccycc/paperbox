@@ -1,4 +1,4 @@
-import { chatCompletionsUrl, getOpenAIConfig, type OpenAIEnv } from "./config";
+import { chatCompletionsUrl, getOpenAIConfig, isDeepSeekEndpoint, type OpenAIConfig, type OpenAIEnv } from "./config";
 import { clip } from "./text";
 
 export type AiCallResult =
@@ -9,6 +9,26 @@ type ChatMessage = {
   role: "system" | "user";
   content: string;
 };
+
+export function chatRequestBody(
+  config: OpenAIConfig,
+  messages: ChatMessage[],
+  responseFormat: boolean,
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    model: config.model,
+    temperature: 0,
+    messages,
+  };
+  if (responseFormat) body.response_format = { type: "json_object" };
+  if (isDeepSeekEndpoint(config.baseUrl)) {
+    // Thinking is on by default and ignores temperature. Turn it off so the
+    // JSON answer lands in message.content inside the request timeout.
+    body.thinking = { type: "disabled" };
+    body.reasoning_effort = "none";
+  }
+  return body;
+}
 
 function messageText(content: unknown): string {
   if (typeof content === "string") return content;
@@ -69,12 +89,7 @@ export async function completeJson(
   const endpoint = chatCompletionsUrl(config.baseUrl);
 
   const send = (responseFormat: boolean) => {
-    const body: Record<string, unknown> = {
-      model: config.model,
-      temperature: 0,
-      messages,
-    };
-    if (responseFormat) body.response_format = { type: "json_object" };
+    const body = chatRequestBody(config, messages, responseFormat);
     return fetchImpl(endpoint, {
       method: "POST",
       headers: {

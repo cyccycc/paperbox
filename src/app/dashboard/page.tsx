@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { UploadForm } from "@/components/upload-form";
+import { runtimeMode } from "@/lib/config";
 import { getSession } from "@/lib/current-user";
 import { prisma } from "@/lib/db";
 import { docLabel, isDocType } from "@/lib/types";
@@ -36,12 +37,25 @@ export default async function DashboardPage() {
     orderBy: { createdAt: "desc" },
     take: 20,
   });
+  const mode = runtimeMode();
+  const modeActive = mode.id !== "offline";
 
   return (
     <div className="space-y-8 pt-2">
       <div>
         <h1 className="font-serif text-4xl">工作台</h1>
         <p className="mt-2 max-w-2xl text-ink-soft">选择文档类型，上传文件或使用示例。提取完成后可以下载 Excel 或 Markdown。</p>
+        <p className="mt-4" role="status">
+          <span
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm ${
+              modeActive ? "border-moss bg-moss-soft text-moss" : "border-line bg-sheet text-ink-soft"
+            }`}
+          >
+            <span>当前模式</span>
+            <span className="font-medium text-ink">{mode.label}</span>
+            {mode.model ? <span>{mode.model}</span> : null}
+          </span>
+        </p>
       </div>
       <UploadForm />
       <section>
