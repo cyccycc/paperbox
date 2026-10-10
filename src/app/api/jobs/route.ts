@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/current-user";
 import { createJob } from "@/lib/jobs";
-import { readSample } from "@/lib/samples";
 import { isDocType } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -21,18 +20,12 @@ export async function POST(request: Request) {
   if (!isDocType(typeValue)) return NextResponse.json({ error: "请选择发票、合同或简历。" }, { status: 400 });
   const rewrite = form.get("rewrite") === "1" || form.get("rewrite") === "on";
 
-  let filename = "";
-  let bytes: Buffer;
-  if (form.get("sample") === "1") {
-    const sample = await readSample(typeValue);
-    filename = sample.filename;
-    bytes = sample.bytes;
-  } else {
-    const file = form.get("file");
-    if (!(file instanceof File)) return NextResponse.json({ error: "请选择文件，或使用示例。" }, { status: 400 });
-    filename = file.name || "upload.txt";
-    bytes = Buffer.from(await file.arrayBuffer());
+  const file = form.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return NextResponse.json({ error: "请选择文件。" }, { status: 400 });
   }
+  const filename = file.name || "upload.txt";
+  const bytes = Buffer.from(await file.arrayBuffer());
 
   const created = await createJob({
     userId: session.uid,

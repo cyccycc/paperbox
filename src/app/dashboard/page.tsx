@@ -49,7 +49,7 @@ export default async function DashboardPage() {
     <div className="space-y-8 pt-2">
       <div>
         <h1 className="font-serif text-4xl">工作台</h1>
-        <p className="mt-2 max-w-2xl text-ink-soft">选择文档类型，上传文件或使用示例。提取完成后可以下载 Excel 或 Markdown。</p>
+        <p className="mt-2 max-w-2xl text-ink-soft">选择文档类型并上传文件。提取完成后可以下载 Excel 或 Markdown。</p>
         <p className="mt-4" role="status">
           <span
             className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm ${
@@ -72,7 +72,7 @@ export default async function DashboardPage() {
         </div>
         <p className="max-w-sm text-sm leading-6 text-ink-soft">
           {credits > 0
-            ? "每次成功提取消耗 1 次，包括使用示例。读不出文字的 PDF 不扣额度。"
+            ? "每次成功提取消耗 1 次。读不出文字的 PDF 不扣额度。"
             : "额度已用完，上传已暂停。购买额度后可以继续。"}
         </p>
         <Link
@@ -90,7 +90,7 @@ export default async function DashboardPage() {
       <section>
         <h2 className="font-serif text-2xl">最近的结果</h2>
         {jobs.length === 0 ? (
-          <p className="mt-3 text-sm text-ink-soft">还没有任务。上传一份文档，或点击「使用示例」。</p>
+          <p className="mt-3 text-sm text-ink-soft">还没有任务。选择类型并上传一份文档。</p>
         ) : (
           <ul className="mt-3 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-sheet">
             {jobs.map((job) => (
