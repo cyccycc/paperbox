@@ -41,7 +41,7 @@ export type BillingOrder = {
   createdAt: string;
 };
 
-export function freeQuota(env: { FREE_QUOTA?: string | undefined } = process.env): number {
+export function freeQuota(env: NodeJS.ProcessEnv = process.env): number {
   const raw = (env.FREE_QUOTA ?? "").trim();
   if (!/^\d+$/.test(raw)) return DEFAULT_FREE_QUOTA;
   const value = Number(raw);
