@@ -41,6 +41,11 @@ export async function POST(request: Request) {
     bytes,
     rewrite,
   });
-  if ("error" in created) return NextResponse.json({ error: created.error }, { status: created.status });
+  if ("error" in created) {
+    return NextResponse.json(
+      created.code ? { error: created.error, code: created.code } : { error: created.error },
+      { status: created.status },
+    );
+  }
   return NextResponse.json({ id: created.id });
 }

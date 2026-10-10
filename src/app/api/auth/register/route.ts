@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { normalizeEmail, validateCredentials } from "@/lib/accounts";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
+import { createUserWithFreeQuota } from "@/lib/quota";
 import { sessionCookieOptions, SESSION_COOKIE, signSession } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -22,8 +23,9 @@ export async function POST(request: Request) {
   if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
 
   try {
-    const user = await prisma.user.create({
-      data: { email, passwordHash: await hashPassword(password) },
+    const user = await createUserWithFreeQuota(prisma, {
+      email,
+      passwordHash: await hashPassword(password),
     });
     const token = await signSession({ uid: user.id, email: user.email });
     const jar = await cookies();

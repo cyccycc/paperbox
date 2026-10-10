@@ -31,11 +31,16 @@ export default async function DashboardPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const jobs = await prisma.job.findMany({
-    where: { userId: session.uid },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-  });
+  const [user, jobs] = await Promise.all([
+    prisma.user.findUnique({ where: { id: session.uid }, select: { credits: true } }),
+    prisma.job.findMany({
+      where: { userId: session.uid },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    }),
+  ]);
+  if (!user) redirect("/login");
+  const credits = user.credits;
 
   return (
     <div className="space-y-8 pt-2">
@@ -43,7 +48,31 @@ export default async function DashboardPage() {
         <h1 className="font-serif text-4xl">工作台</h1>
         <p className="mt-2 max-w-2xl text-ink-soft">选择文档类型，上传文件或使用示例。提取完成后可以下载 Excel 或 Markdown。</p>
       </div>
-      <UploadForm />
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-line bg-sheet px-5 py-4">
+        <div>
+          <p className="text-sm text-ink-soft">剩余额度</p>
+          <p className="mt-1 font-serif text-4xl leading-none">
+            {credits}
+            <span className="ml-2 font-sans text-lg">次</span>
+          </p>
+        </div>
+        <p className="max-w-sm text-sm leading-6 text-ink-soft">
+          {credits > 0
+            ? "每次成功提取消耗 1 次，包括使用示例。读不出文字的 PDF 不扣额度。"
+            : "额度已用完，上传已暂停。购买额度后可以继续。"}
+        </p>
+        <Link
+          href="/billing"
+          className={
+            credits > 0
+              ? "rounded-full border border-line bg-white px-4 py-2 text-sm hover:border-seal hover:text-seal"
+              : "rounded-full bg-seal px-4 py-2 text-sm text-white hover:bg-seal-deep"
+          }
+        >
+          购买额度
+        </Link>
+      </section>
+      <UploadForm credits={credits} />
       <section>
         <h2 className="font-serif text-2xl">最近的结果</h2>
         {jobs.length === 0 ? (
