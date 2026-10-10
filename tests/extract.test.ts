@@ -6,7 +6,7 @@ import type { InvoiceData } from "../src/lib/types";
 
 const invoiceText = ["销售方：离线商家", "纳税人识别号：TAX-1", "开票日期：2026-01-01", "价税合计：¥10.00"].join("\n");
 
-function env(overrides: Record<string, string>): NodeJS.ProcessEnv {
+function env(overrides: Record<string, string>) {
   return { ...overrides };
 }
 

@@ -63,7 +63,7 @@ export function UploadForm() {
     await submit(form, "正在提取…");
   }
 
-  async function useSample(sampleType: DocId) {
+  async function runSample(sampleType: DocId) {
     const form = new FormData();
     form.set("type", sampleType);
     form.set("sample", "1");
@@ -91,7 +91,7 @@ export function UploadForm() {
                 className="mt-4 rounded-full border border-line px-3 py-1.5 text-sm hover:border-seal hover:text-seal disabled:opacity-60"
                 type="button"
                 disabled={Boolean(pending)}
-                onClick={() => useSample(item.id)}
+                onClick={() => runSample(item.id)}
               >
                 使用示例
               </button>

@@ -1,4 +1,4 @@
-import { chatCompletionsUrl, getOpenAIConfig } from "./config";
+import { chatCompletionsUrl, getOpenAIConfig, type OpenAIEnv } from "./config";
 import { clip } from "./text";
 
 export type AiCallResult =
@@ -55,7 +55,7 @@ async function errorReason(response: Response): Promise<string> {
 export async function completeJson(
   system: string,
   user: string,
-  options?: { fetchImpl?: typeof fetch; env?: NodeJS.ProcessEnv },
+  options?: { fetchImpl?: typeof fetch; env?: OpenAIEnv },
 ): Promise<AiCallResult> {
   const fetchImpl = options?.fetchImpl ?? fetch;
   const config = getOpenAIConfig(options?.env);

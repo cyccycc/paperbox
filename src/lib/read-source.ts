@@ -29,7 +29,7 @@ export async function readSource(filename: string, bytes: Uint8Array): Promise<S
   }
 
   if (extension === ".pdf") {
-    const pdf = await getDocumentProxy(bytes);
+    const pdf = await getDocumentProxy(new Uint8Array(bytes));
     const extracted = await extractText(pdf, { mergePages: true });
     const text = Array.isArray(extracted.text) ? extracted.text.join("\n") : extracted.text ?? "";
     if (isBlankText(text)) return { ok: false, code: "no_text", message: NO_TEXT_MESSAGE };

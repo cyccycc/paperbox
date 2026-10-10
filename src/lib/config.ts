@@ -1,3 +1,9 @@
+export type OpenAIEnv = {
+  OPENAI_API_KEY?: string;
+  OPENAI_BASE_URL?: string;
+  OPENAI_MODEL?: string;
+};
+
 export type OpenAIConfig = {
   apiKey: string;
   baseUrl: string;
@@ -10,10 +16,11 @@ export type OpenAIConfig = {
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
 const DEFAULT_MODEL = "gpt-4o-mini";
 
-export function getOpenAIConfig(env: NodeJS.ProcessEnv = process.env): OpenAIConfig {
-  const apiKey = (env.OPENAI_API_KEY ?? "").trim();
-  const model = (env.OPENAI_MODEL ?? "").trim() || DEFAULT_MODEL;
-  const rawBase = (env.OPENAI_BASE_URL ?? "").trim() || DEFAULT_BASE_URL;
+export function getOpenAIConfig(env?: OpenAIEnv): OpenAIConfig {
+  const source = env ?? process.env;
+  const apiKey = (source.OPENAI_API_KEY ?? "").trim();
+  const model = (source.OPENAI_MODEL ?? "").trim() || DEFAULT_MODEL;
+  const rawBase = (source.OPENAI_BASE_URL ?? "").trim() || DEFAULT_BASE_URL;
   const baseUrl = rawBase.replace(/\/+$/, "");
   const baseUrlOk = /\/v1$/i.test(baseUrl);
 

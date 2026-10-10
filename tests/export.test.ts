@@ -31,7 +31,7 @@ test("invoice workbook keeps fields and neutralizes formula text", async () => {
   const file = await invoiceToXlsx(data);
   assert.equal(file.subarray(0, 2).toString(), "PK");
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(file);
+  await workbook.xlsx.load(file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength) as ArrayBuffer);
   const overview = workbook.getWorksheet("概览");
   assert.equal(overview?.getCell("A2").value, "销售方");
   assert.equal(overview?.getCell("B2").value, "'=1+1");

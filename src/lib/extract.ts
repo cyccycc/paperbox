@@ -1,4 +1,4 @@
-import { getOpenAIConfig } from "./config";
+import { getOpenAIConfig, type OpenAIEnv } from "./config";
 import { aiRewriteWasReplaced, normalizeAi } from "./normalize";
 import { completeJson } from "./openai";
 import { parseOffline } from "./parsers";
@@ -19,7 +19,7 @@ export async function extractFields(
   type: DocType,
   text: string,
   rewrite: boolean,
-  options?: { fetchImpl?: typeof fetch; env?: NodeJS.ProcessEnv },
+  options?: { fetchImpl?: typeof fetch; env?: OpenAIEnv },
 ): Promise<ExtractionOutcome> {
   const offline = parseOffline(type, text, rewrite);
   const config = getOpenAIConfig(options?.env);
