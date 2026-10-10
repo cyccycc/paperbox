@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f3ecdf;
+  --color-paper-deep: #e7dcc8;
+  --color-sheet: #fffaf3;
+  --color-ink: #1c1612;
+  --color-ink-soft: #5e5348;
+  --color-line: #e0d3c0;
+  --color-seal: #9f2d20;
+  --color-seal-deep: #7c2218;
+  --color-moss: #2f5d3a;
+  --color-moss-soft: #e7f0e6;
+  --color-warn: #8a4b12;
+  --color-warn-soft: #f8ecd9;
+  --font-sans: "Noto Sans SC", "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif;
+  --font-serif: "Noto Serif SC", "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--color-paper);
+  background-image:
+    radial-gradient(rgba(28, 22, 18, 0.045) 0.7px, transparent 0.7px),
+    linear-gradient(180deg, rgba(255, 250, 243, 0.4), transparent 280px);
+  background-size: 8px 8px, 100% 100%;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: #f0c7b6;
+}
+
+.sheet {
+  background: var(--color-sheet);
+  border: 1px solid var(--color-line);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 18px 40px rgba(70, 46, 24, 0.06);
+}
+
+.seal {
+  display: grid;
+  width: 2.6rem;
+  height: 2.6rem;
+  place-items: center;
+  border: 2px solid var(--color-seal);
+  border-radius: 3px;
+  color: var(--color-seal);
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+  transform: rotate(-8deg);
+}
+
+button,
+a,
+input,
+label {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+button {
+  font: inherit;
+}
