@@ -38,7 +38,10 @@ export function sessionCookieOptions(maxAge = 60 * 60 * 24 * 7) {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
+    // Browsers drop Secure cookies on plain HTTP. NODE_ENV=production is not
+    // HTTPS when the site sits behind an HTTP reverse proxy, so Secure is
+    // opt-in: set COOKIE_SECURE=true only after TLS terminates in front.
+    secure: process.env.COOKIE_SECURE === "true",
     path: "/",
     maxAge,
   };

@@ -24,7 +24,8 @@ npm run dev
 | 变量 | 作用 |
 | --- | --- |
 | `DATABASE_URL` | SQLite 连接串，默认 `file:./dev.db`（相对 `prisma/` 目录） |
-| `AUTH_SECRET` | 登录会话签名。生产环境请换成足够长的随机字符串 |
+| `AUTH_SECRET` | 登录会话签名。生产环境请换成足够长的随机字符串。变量名是 `AUTH_SECRET`，不是 `SESSION_SECRET` |
+| `COOKIE_SECURE` | 登录 Cookie 是否带 `Secure`。只有设为 `true` 才开启。纯 HTTP 反向代理请保持 `false`（或留空），否则浏览器不保存 Cookie，登录后会回到 `/login`。站点改为 HTTPS 后再设为 `true` |
 | `OPENAI_API_KEY` | DeepSeek（或其他 OpenAI 兼容服务）的密钥。留空则只用离线解析 |
 | `OPENAI_BASE_URL` | OpenAI 兼容接口根路径，**必须包含 `/v1`**。默认 `https://api.deepseek.com/v1` |
 | `OPENAI_MODEL` | 模型名。默认 `deepseek-flash`（当前推荐的 DeepSeek 对话模型） |
@@ -32,6 +33,8 @@ npm run dev
 | `ADMIN_GRANT_SECRET` | 可选。测试发放额度用的口令，**不是**支付商户密钥。留空则管理接口关闭 |
 
 纸匣请求 `${OPENAI_BASE_URL}/chat/completions`，不会再追加一层 `/v1`。
+
+登录 Cookie 始终是 `httpOnly`、`sameSite=lax`。`Secure` 不跟 `NODE_ENV` 走：反向代理用明文 HTTP 时（例如还没上 TLS），生产进程如果发出 `Secure` Cookie，浏览器会丢掉它，登录看起来成功，下一跳又回到 `/login`。对外是 HTTPS 之后，把 `COOKIE_SECURE` 设为 `true` 并重启。会话仍由 `AUTH_SECRET` 签名。
 
 ## 接入 DeepSeek
 
