@@ -7,7 +7,8 @@ import {
   ORDER_CANCELLED,
   ORDER_PAID,
   ORDER_PENDING,
-  PAYMENT_COMING_SOON,
+  PAYMENT_CLAIMED_MESSAGE,
+  PAYMENT_SCAN_MESSAGE,
 } from "./billing";
 
 const MAX_GRANT = 100_000;
@@ -165,6 +166,8 @@ export async function createPendingOrder(
         amountCents: number;
         channel: string;
         status: string;
+        note: string | null;
+        claimedAt: Date | null;
         createdAt: Date;
       };
     }
@@ -188,7 +191,88 @@ export async function createPendingOrder(
       status: ORDER_PENDING,
     },
   });
-  return { ok: true, message: PAYMENT_COMING_SOON, order };
+  return { ok: true, message: PAYMENT_SCAN_MESSAGE, order };
+}
+
+export async function claimOrderPayment(
+  db: PrismaClient,
+  input: { userId: string; orderId: string; note?: string },
+): Promise<
+  | {
+      ok: true;
+      message: string;
+      order: {
+        id: string;
+        packId: string;
+        credits: number;
+        amountCents: number;
+        channel: string;
+        status: string;
+        note: string | null;
+        claimedAt: Date | null;
+        createdAt: Date;
+      };
+    }
+  | { ok: false; error: string; status: number }
+> {
+  const note = input.note?.trim().slice(0, 200) ?? "";
+  if (!input.orderId) return { ok: false, error: "请提供订单号。", status: 400 };
+  if (!note) return { ok: false, error: "请填写付款备注，方便核对。", status: 400 };
+
+  const order = await db.order.findUnique({ where: { id: input.orderId } });
+  if (!order || order.userId !== input.userId) return { ok: false, error: "找不到订单。", status: 404 };
+  if (order.status === ORDER_PAID) return { ok: false, error: "这笔订单已经入账。", status: 400 };
+  if (order.status !== ORDER_PENDING) return { ok: false, error: "只有待支付订单可以提交付款说明。", status: 400 };
+
+  const updated = await db.order.updateMany({
+    where: { id: order.id, userId: input.userId, status: ORDER_PENDING },
+    data: { note, claimedAt: new Date() },
+  });
+  if (updated.count !== 1) return { ok: false, error: "订单状态已变化，请刷新后再试。", status: 409 };
+
+  const fresh = await db.order.findUnique({ where: { id: order.id } });
+  if (!fresh) return { ok: false, error: "找不到订单。", status: 404 };
+  return { ok: true, message: PAYMENT_CLAIMED_MESSAGE, order: fresh };
+}
+
+export type ClaimedOrder = {
+  id: string;
+  email: string;
+  packId: string;
+  credits: number;
+  amountCents: number;
+  channel: string;
+  status: string;
+  note: string | null;
+  claimedAt: string;
+  createdAt: string;
+};
+
+/** Pending orders whose payer already clicked 我已付款. */
+export async function listClaimedOrders(db: PrismaClient): Promise<ClaimedOrder[]> {
+  const orders = await db.order.findMany({
+    where: { status: ORDER_PENDING, claimedAt: { not: null } },
+    orderBy: { claimedAt: "desc" },
+    take: 50,
+    include: { user: { select: { email: true } } },
+  });
+  return orders.flatMap((order) => {
+    if (!order.claimedAt) return [];
+    return [
+      {
+        id: order.id,
+        email: order.user.email,
+        packId: order.packId,
+        credits: order.credits,
+        amountCents: order.amountCents,
+        channel: order.channel,
+        status: order.status,
+        note: order.note,
+        claimedAt: order.claimedAt.toISOString(),
+        createdAt: order.createdAt.toISOString(),
+      },
+    ];
+  });
 }
 
 export async function settleOrder(

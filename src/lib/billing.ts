@@ -3,7 +3,8 @@ export const MAX_FREE_QUOTA = 100_000;
 
 export const QUOTA_EXHAUSTED_CODE = "quota_exhausted" as const;
 export const QUOTA_EXHAUSTED_MESSAGE = "额度已用完，请购买额度后再继续。";
-export const PAYMENT_COMING_SOON = "支付通道即将开通";
+export const PAYMENT_SCAN_MESSAGE = "请扫码付款，然后点「我已付款」。核对到账后才会增加额度。";
+export const PAYMENT_CLAIMED_MESSAGE = "已记下。核对到账后才会增加额度。";
 
 export const ORDER_PENDING = "pending";
 export const ORDER_PAID = "paid";
@@ -16,7 +17,7 @@ export const CREDIT_PACKS = [
     amountCents: 2900,
     title: "50 次",
     price: "¥29",
-    hint: "参考价，不会真实扣款。适合偶尔整理发票、合同或简历。",
+    hint: "适合偶尔整理发票、合同或简历。",
   },
   {
     id: "200",
@@ -24,7 +25,7 @@ export const CREDIT_PACKS = [
     amountCents: 9900,
     title: "200 次",
     price: "¥99",
-    hint: "参考价，不会真实扣款。适合一次处理一批文档。",
+    hint: "适合一次处理一批文档。",
   },
 ] as const;
 
@@ -38,10 +39,48 @@ export type BillingOrder = {
   amountCents: number;
   channel: string;
   status: string;
+  note: string | null;
+  claimedAt: string | null;
   createdAt: string;
 };
 
-export function freeQuota(env: NodeJS.ProcessEnv = process.env): number {
+const QR_ENV: Record<PayChannel, "PAYMENT_ALIPAY_QR_URL" | "PAYMENT_WECHAT_QR_URL"> = {
+  alipay: "PAYMENT_ALIPAY_QR_URL",
+  wechat: "PAYMENT_WECHAT_QR_URL",
+};
+
+/** Personal collection QR. Accepts a site path or an http(s) image URL. */
+export function paymentQrUrl(
+  channel: PayChannel,
+  env: Record<string, string | undefined> = process.env,
+): string | null {
+  const raw = (env[QR_ENV[channel]] ?? "").trim();
+  if (!raw || raw.length > 500 || /\s/.test(raw)) return null;
+  if (raw.startsWith("/") && !raw.startsWith("//")) {
+    if (raw.includes("..") || raw.includes("\\")) return null;
+    if (!/^\/[A-Za-z0-9._~/-]+$/.test(raw)) return null;
+    return raw;
+  }
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    if (url.username || url.password) return null;
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
+export function paymentQrMap(
+  env: Record<string, string | undefined> = process.env,
+): Record<PayChannel, string | null> {
+  return {
+    alipay: paymentQrUrl("alipay", env),
+    wechat: paymentQrUrl("wechat", env),
+  };
+}
+
+export function freeQuota(env: Record<string, string | undefined> = process.env): number {
   const raw = (env.FREE_QUOTA ?? "").trim();
   if (!/^\d+$/.test(raw)) return DEFAULT_FREE_QUOTA;
   const value = Number(raw);
@@ -63,8 +102,8 @@ export function channelLabel(channel: string): string {
   return channel;
 }
 
-export function orderStatusLabel(status: string): string {
-  if (status === ORDER_PENDING) return "待支付";
+export function orderStatusLabel(status: string, claimed = false): string {
+  if (status === ORDER_PENDING) return claimed ? "待核对" : "待支付";
   if (status === ORDER_PAID) return "已支付";
   if (status === ORDER_CANCELLED) return "已取消";
   return status;
@@ -96,8 +135,11 @@ export function toBillingOrder(order: {
   amountCents: number;
   channel: string;
   status: string;
+  note?: string | null;
+  claimedAt?: Date | string | null;
   createdAt: Date | string;
 }): BillingOrder {
+  const claimedAt = order.claimedAt instanceof Date ? order.claimedAt.toISOString() : order.claimedAt || null;
   return {
     id: order.id,
     packId: order.packId,
@@ -105,6 +147,8 @@ export function toBillingOrder(order: {
     amountCents: order.amountCents,
     channel: order.channel,
     status: order.status,
+    note: order.note ?? null,
+    claimedAt,
     createdAt: order.createdAt instanceof Date ? order.createdAt.toISOString() : order.createdAt,
   };
 }

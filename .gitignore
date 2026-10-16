@@ -6,6 +6,8 @@ out
 .env*.local
 uploads/*
 !uploads/.gitkeep
+public/pay/*
+!public/pay/README.md
 prisma/*.db
 prisma/*.db-journal
 *.log

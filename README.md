@@ -30,7 +30,9 @@ npm run dev
 | `OPENAI_BASE_URL` | OpenAI 兼容接口根路径，**必须包含 `/v1`**。默认 `https://api.deepseek.com/v1` |
 | `OPENAI_MODEL` | 模型名。默认 `deepseek-flash`（当前推荐的 DeepSeek 对话模型） |
 | `FREE_QUOTA` | 新用户免费成功提取次数，默认 `10`。注册时写入账号，之后改这个值不会改已有账号 |
-| `ADMIN_GRANT_SECRET` | 可选。测试发放额度用的口令，**不是**支付商户密钥。留空则管理接口关闭 |
+| `PAYMENT_ALIPAY_QR_URL` | 支付宝个人收款码。站点路径（如 `/pay/alipay.png`）或 https 图片地址。留空则不显示 |
+| `PAYMENT_WECHAT_QR_URL` | 微信个人收款码。用法同上 |
+| `ADMIN_GRANT_SECRET` | 可选。发放额度，以及把「我已付款」的订单标成已支付。**不是**支付商户密钥。留空则管理接口关闭 |
 
 纸匣请求 `${OPENAI_BASE_URL}/chat/completions`，不会再追加一层 `/v1`。
 
@@ -54,7 +56,7 @@ npm run dev
 
 新用户按 `FREE_QUOTA` 获得免费次数（默认 10）。发票、合同、简历每次**成功**提取消耗 1 次。读不出文字的 PDF 会留下记录，但不扣额度。工作台显示剩余次数。
 
-剩余 0 次时，上传会停住，并给出「购买额度」。额度页 `/billing` 列出 50 次（参考价 ¥29）和 200 次（参考价 ¥99）。「微信支付」「支付宝」只在数据库里创建状态为 `pending` 的订单，并提示「支付通道即将开通」。没有真实扣款，也不需要商户密钥。待支付订单不会增加额度。
+剩余 0 次时，上传会停住，并给出「购买额度」。额度页 `/billing` 列出 50 次（¥29）和 200 次（¥99）。把个人收款码放到 `public/pay/`（说明见该目录 README），或设置 `PAYMENT_ALIPAY_QR_URL` / `PAYMENT_WECHAT_QR_URL`；改完后重启。用户选择次数包后生成待支付订单并看到收款码，扫码手动付款，再点「我已付款」留下备注。核对入账后次数才会增加。当前不接支付宝或微信的商户接口。
 
 已有账号在这次迁移里会得到 10 次，和当时的 `FREE_QUOTA` 无关。
 
@@ -71,6 +73,13 @@ curl -X POST http://localhost:3000/api/admin/credits \
   -H "Authorization: Bearer $ADMIN_GRANT_SECRET" \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com","credits":50}'
+```
+
+列出已点「我已付款」、尚未入账的订单：
+
+```bash
+curl http://localhost:3000/api/admin/credits \
+  -H "Authorization: Bearer $ADMIN_GRANT_SECRET"
 ```
 
 把一笔待支付订单标成已支付（会按订单次数入账，同一订单不会重复入账）：
@@ -123,6 +132,6 @@ npm run lint
 - `src/app`：页面与接口（注册、登录、工作台、额度、结果、下载）
 - `src/lib/parsers`：离线解析
 - `src/lib/extract.ts`：模型调用与回退
-- `src/lib/quota.ts`：免费额度、扣次、待支付订单
+- `src/lib/quota.ts`：免费额度、扣次、收款码订单与核对入账
 - `prisma/`：SQLite 模型与迁移
 - `uploads/`：上传文件，不入库

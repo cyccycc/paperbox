@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminAuthorized } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
-import { grantCredits, settleOrder } from "@/lib/quota";
+import { grantCredits, listClaimedOrders, settleOrder } from "@/lib/quota";
 
 export const runtime = "nodejs";
 
@@ -13,7 +13,7 @@ type AdminBody = {
   action?: unknown;
 };
 
-export async function POST(request: Request) {
+function unauthorized(request: Request): NextResponse | null {
   const secret = process.env.ADMIN_GRANT_SECRET;
   if (!secret?.trim()) {
     return NextResponse.json({ error: "未开启额度发放。" }, { status: 404 });
@@ -21,6 +21,19 @@ export async function POST(request: Request) {
   if (!adminAuthorized(request.headers.get("authorization"), secret)) {
     return NextResponse.json({ error: "无权操作。" }, { status: 401 });
   }
+  return null;
+}
+
+export async function GET(request: Request) {
+  const denied = unauthorized(request);
+  if (denied) return denied;
+  const orders = await listClaimedOrders(prisma);
+  return NextResponse.json({ orders });
+}
+
+export async function POST(request: Request) {
+  const denied = unauthorized(request);
+  if (denied) return denied;
 
   let body: AdminBody;
   try {
