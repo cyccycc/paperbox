@@ -39,7 +39,10 @@ let createPendingOrder: typeof import("../src/lib/quota").createPendingOrder;
 let createUserWithFreeQuota: typeof import("../src/lib/quota").createUserWithFreeQuota;
 let grantCredits: typeof import("../src/lib/quota").grantCredits;
 let settleOrder: typeof import("../src/lib/quota").settleOrder;
+let claimOrderPayment: typeof import("../src/lib/quota").claimOrderPayment;
+let listClaimedOrders: typeof import("../src/lib/quota").listClaimedOrders;
 let POST: typeof import("../src/app/api/admin/credits/route").POST;
+let GET: typeof import("../src/app/api/admin/credits/route").GET;
 
 test.before(async () => {
   const db = await import("../src/lib/db");
@@ -53,7 +56,10 @@ test.before(async () => {
   createUserWithFreeQuota = quota.createUserWithFreeQuota;
   grantCredits = quota.grantCredits;
   settleOrder = quota.settleOrder;
+  claimOrderPayment = quota.claimOrderPayment;
+  listClaimedOrders = quota.listClaimedOrders;
   POST = admin.POST;
+  GET = admin.GET;
 });
 
 async function makeUser(email: string, credits?: number) {
@@ -172,15 +178,16 @@ test("unreadable and rejected files do not spend a credit", async () => {
   assert.equal(await prisma.creditLedger.count({ where: { userId: user.id, reason: "job" } }), 0);
 });
 
-test("placeholder checkout stays pending and does not add credits", async () => {
+test("checkout stays pending until it is marked paid", async () => {
   const user = await makeUser("bill@example.com", 3);
   const created = await createPendingOrder(prisma, { userId: user.id, packId: "50", channel: "wechat" });
   assert.equal(created.ok, true);
   if (!created.ok) return;
-  assert.equal(created.message, "支付通道即将开通");
+  assert.match(created.message, /我已付款/);
   assert.equal(created.order.status, "pending");
   assert.equal(created.order.credits, 50);
   assert.equal(created.order.channel, "wechat");
+  assert.equal(created.order.claimedAt, null);
   const balance = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
   assert.equal(balance.credits, 3);
 
@@ -188,6 +195,59 @@ test("placeholder checkout stays pending and does not add credits", async () => 
   assert.equal(missing.ok, false);
   const badChannel = await createPendingOrder(prisma, { userId: user.id, packId: "200", channel: "cash" });
   assert.equal(badChannel.ok, false);
+});
+
+test("claiming payment stores a note and mark_paid adds credits once", async () => {
+  const user = await makeUser("claim@example.com", 4);
+  const created = await createPendingOrder(prisma, { userId: user.id, packId: "50", channel: "alipay" });
+  assert.equal(created.ok, true);
+  if (!created.ok) return;
+
+  const empty = await claimOrderPayment(prisma, { userId: user.id, orderId: created.order.id, note: "  " });
+  assert.equal(empty.ok, false);
+
+  const other = await makeUser("other-claim@example.com", 1);
+  const stolen = await claimOrderPayment(prisma, {
+    userId: other.id,
+    orderId: created.order.id,
+    note: "不是我的",
+  });
+  assert.equal(stolen.ok, false);
+
+  const unclaimed = await createPendingOrder(prisma, { userId: user.id, packId: "200", channel: "wechat" });
+  assert.equal(unclaimed.ok, true);
+  if (!unclaimed.ok) return;
+
+  const claimed = await claimOrderPayment(prisma, {
+    userId: user.id,
+    orderId: created.order.id,
+    note: "  支付宝 张三  ",
+  });
+  assert.equal(claimed.ok, true);
+  if (!claimed.ok) return;
+  assert.equal(claimed.order.note, "支付宝 张三");
+  assert.ok(claimed.order.claimedAt);
+  assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).credits, 4);
+
+  const listed = await listClaimedOrders(prisma);
+  assert.equal(
+    listed.some((order) => order.id === created.order.id && order.email === user.email && order.note === "支付宝 张三"),
+    true,
+  );
+  assert.equal(
+    listed.some((order) => order.id === unclaimed.order.id),
+    false,
+  );
+
+  const paid = await settleOrder(prisma, { orderId: created.order.id, action: "mark_paid" });
+  assert.equal(paid.ok, true);
+  if (!paid.ok) return;
+  assert.equal(paid.credits, 54);
+  const again = await settleOrder(prisma, { orderId: created.order.id, action: "mark_paid" });
+  assert.equal(again.ok && again.credits, 54);
+  const late = await claimOrderPayment(prisma, { userId: user.id, orderId: created.order.id, note: "再交一次" });
+  assert.equal(late.ok, false);
+  assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).credits, 54);
 });
 
 test("grant and mark_paid change credits once", async () => {
@@ -249,6 +309,40 @@ test("admin endpoint grants with the secret and stays closed without it", async 
       method: "POST",
       headers: { authorization: "Bearer grant-test-secret", "content-type": "application/json" },
       body: JSON.stringify({ email: user.email, credits: 4 }),
+    }),
+  );
+  assert.equal(closed.status, 404);
+  process.env.ADMIN_GRANT_SECRET = "grant-test-secret";
+});
+
+test("admin endpoint lists claimed orders", async () => {
+  const user = await makeUser("list-claim@example.com", 2);
+  const created = await createPendingOrder(prisma, { userId: user.id, packId: "50", channel: "wechat" });
+  assert.equal(created.ok, true);
+  if (!created.ok) return;
+  const claimed = await claimOrderPayment(prisma, { userId: user.id, orderId: created.order.id, note: "微信 10:20" });
+  assert.equal(claimed.ok, true);
+
+  const denied = await GET(
+    new Request("http://localhost/api/admin/credits", {
+      headers: { authorization: "Bearer wrong" },
+    }),
+  );
+  assert.equal(denied.status, 401);
+
+  const listed = await GET(
+    new Request("http://localhost/api/admin/credits", {
+      headers: { authorization: "Bearer grant-test-secret" },
+    }),
+  );
+  assert.equal(listed.status, 200);
+  const payload = (await listed.json()) as { orders: { id: string; note: string | null }[] };
+  assert.equal(payload.orders.some((order) => order.id === created.order.id && order.note === "微信 10:20"), true);
+
+  process.env.ADMIN_GRANT_SECRET = "";
+  const closed = await GET(
+    new Request("http://localhost/api/admin/credits", {
+      headers: { authorization: "Bearer grant-test-secret" },
     }),
   );
   assert.equal(closed.status, 404);

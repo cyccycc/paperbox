@@ -37,19 +37,22 @@ model Job {
   @@index([userId, createdAt])
 }
 
-/// Placeholder checkout. pending orders do not add credits.
+/// Personal QR checkout. Pending orders do not add credits until mark_paid.
 model Order {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   packId      String
   credits     Int
   amountCents Int
-  currency    String   @default("CNY")
+  currency    String    @default("CNY")
   channel     String
-  status      String   @default("pending")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  status      String    @default("pending")
+  /// Payer note submitted with 我已付款. Null until the user claims payment.
+  note        String?
+  claimedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([userId, createdAt])
 }
