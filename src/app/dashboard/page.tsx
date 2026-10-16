@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { CopyAnchors } from "@/components/copy-anchors";
 import { UploadForm } from "@/components/upload-form";
 import { runtimeMode } from "@/lib/config";
 import { getSession } from "@/lib/current-user";
@@ -87,6 +88,7 @@ export default async function DashboardPage() {
         </Link>
       </section>
       <UploadForm credits={credits} />
+      <CopyAnchors />
       <section>
         <h2 className="font-serif text-2xl">最近的结果</h2>
         {jobs.length === 0 ? (

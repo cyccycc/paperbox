@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CopyAnchors } from "@/components/copy-anchors";
 
 const features = [
   {
@@ -49,6 +50,8 @@ export default function HomePage() {
           </ol>
         </div>
       </section>
+
+      <CopyAnchors />
 
       <section className="grid gap-4 md:grid-cols-3">
         {features.map((item) => (
