@@ -36,7 +36,7 @@ export default async function BillingPage() {
         </p>
         <h1 className="mt-2 font-serif text-4xl">购买额度</h1>
         <p className="mt-2 max-w-2xl text-ink-soft">
-          选择 50 次或 200 次，扫支付宝或微信收款码付款。付完点「我已付款」，核对后次数才会到账。
+          选择 50 次或 200 次，点「购买」后选择微信支付或支付宝。付完点「我已付款」，核对后次数才会到账。
         </p>
       </div>
       <BillingPanel credits={user.credits} orders={orders.map((order) => toBillingOrder(order))} qr={paymentQrMap()} />
