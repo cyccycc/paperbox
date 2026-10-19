@@ -81,6 +81,12 @@ export default function HomePage() {
           </p>
         </article>
       </section>
+
+      <footer className="text-sm text-ink-soft">
+        <Link href="/blog/invoice-pdf-to-excel" className="underline-offset-2 hover:text-seal hover:underline">
+          教程：电子发票 PDF 怎么抽成表格
+        </Link>
+      </footer>
     </div>
   );
 }
