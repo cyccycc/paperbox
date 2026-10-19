@@ -21,6 +21,8 @@ export const config = {
     "/jobs/:path*",
     "/billing",
     "/billing/:path*",
+    "/admin",
+    "/admin/:path*",
     "/api/jobs/:path*",
     "/api/billing/:path*",
   ],

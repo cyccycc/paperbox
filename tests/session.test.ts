@@ -1,12 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { sessionCookieOptions } from "../src/lib/session";
+import { cookieFromHeader, SESSION_COOKIE, sessionCookieOptions } from "../src/lib/session";
 
 function setNodeEnv(value: string | undefined) {
   const env = process.env as Record<string, string | undefined>;
   if (value === undefined) delete env.NODE_ENV;
   else env.NODE_ENV = value;
 }
+
+test("cookieFromHeader reads one named cookie", () => {
+  assert.equal(cookieFromHeader(null, SESSION_COOKIE), null);
+  assert.equal(cookieFromHeader("other=1", SESSION_COOKIE), null);
+  assert.equal(cookieFromHeader(`${SESSION_COOKIE}=abc.def`, SESSION_COOKIE), "abc.def");
+  assert.equal(cookieFromHeader(`a=1; ${SESSION_COOKIE}=abc%2Edef; b=2`, SESSION_COOKIE), "abc.def");
+});
 
 test("session cookie is Secure only when COOKIE_SECURE=true", () => {
   const previousSecure = process.env.COOKIE_SECURE;

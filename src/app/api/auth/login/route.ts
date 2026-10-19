@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { normalizeEmail, validateCredentials } from "@/lib/accounts";
+import { normalizeEmail, validateLogin } from "@/lib/accounts";
 import { prisma } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 import { sessionCookieOptions, SESSION_COOKIE, signSession } from "@/lib/session";
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
 
   const email = normalizeEmail(body.email);
   const password = typeof body.password === "string" ? body.password : "";
-  const invalid = validateCredentials(email, password);
+  const invalid = validateLogin(email, password);
   if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
 
   const user = await prisma.user.findUnique({ where: { email } });

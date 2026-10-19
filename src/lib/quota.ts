@@ -152,6 +152,37 @@ export async function grantCredits(
   return { ok: true, email: user.email, credits: applied };
 }
 
+/** Sets remaining credits to an absolute value and records the delta. */
+export async function setCredits(
+  db: PrismaClient,
+  input: { userId: string; credits: number; note?: string },
+): Promise<GrantResult> {
+  if (!Number.isInteger(input.credits) || input.credits < 0 || input.credits > MAX_GRANT) {
+    return { ok: false, error: "额度必须是 0 到 100000 的整数。", status: 400 };
+  }
+
+  const note = input.note?.trim().slice(0, 200) || "管理员调整额度";
+  const applied = await db.$transaction(async (tx): Promise<{ email: string; credits: number } | null> => {
+    const user = await tx.user.findUnique({ where: { id: input.userId } });
+    if (!user) return null;
+    const delta = input.credits - user.credits;
+    if (delta === 0) return { email: user.email, credits: user.credits };
+    await tx.user.update({ where: { id: user.id }, data: { credits: input.credits } });
+    await tx.creditLedger.create({
+      data: {
+        userId: user.id,
+        delta,
+        reason: "grant",
+        note,
+      },
+    });
+    return { email: user.email, credits: input.credits };
+  });
+
+  if (!applied) return { ok: false, error: "找不到该用户。", status: 404 };
+  return { ok: true, email: applied.email, credits: applied.credits };
+}
+
 export async function createPendingOrder(
   db: PrismaClient,
   input: { userId: string; packId: string; channel: string },

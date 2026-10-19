@@ -13,6 +13,8 @@ model User {
   passwordHash String
   /// Remaining successful parses. Existing rows receive 10; registration sets FREE_QUOTA.
   credits      Int            @default(10)
+  /// Operator access to /admin. Existing rows stay false.
+  isAdmin      Boolean        @default(false)
   createdAt    DateTime       @default(now())
   jobs         Job[]
   orders       Order[]

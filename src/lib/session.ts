@@ -34,6 +34,23 @@ export async function readSession(token: string | undefined | null): Promise<Ses
   }
 }
 
+export function cookieFromHeader(header: string | null | undefined, name: string): string | null {
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const trimmed = part.trim();
+    const eq = trimmed.indexOf("=");
+    if (eq <= 0) continue;
+    if (trimmed.slice(0, eq) !== name) continue;
+    const raw = trimmed.slice(eq + 1);
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
+  }
+  return null;
+}
+
 export function sessionCookieOptions(maxAge = 60 * 60 * 24 * 7) {
   return {
     httpOnly: true,

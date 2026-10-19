@@ -33,6 +33,7 @@ npm run dev
 | `PAYMENT_ALIPAY_QR_URL` | 支付宝个人收款码。站点路径（如 `/pay/alipay.png`）或 https 图片地址。留空则不显示 |
 | `PAYMENT_WECHAT_QR_URL` | 微信个人收款码。用法同上 |
 | `ADMIN_GRANT_SECRET` | 可选。发放额度，以及把「我已付款」的订单标成已支付。**不是**支付商户密钥。留空则管理接口关闭 |
+| `ADMIN_SEED_PASSWORD` | 仅 `npm run seed:admin` 使用。写入账号 `9999` 的密码，至少 8 位。不要提交真实密码 |
 
 纸匣请求 `${OPENAI_BASE_URL}/chat/completions`，不会再追加一层 `/v1`。
 
@@ -93,6 +94,19 @@ curl -X POST http://localhost:3000/api/admin/credits \
 
 `action` 还可以是 `cancel`（已支付的订单不能取消）。订单状态为 `pending`、`paid`、`cancelled`。
 
+## 管理后台
+
+`/admin` 列出账号、注册时间、剩余额度和成功提取次数，并可以改剩余额度。新注册的账号排在前面。只有 `User.isAdmin` 为真的账号能打开；其他人会看到「没有找到」。未登录会先到登录页。页头在管理员登录后多一个「管理」入口。
+
+种子管理员的登录账号是 `9999`（存在邮箱字段里）。注册接口仍然只接受邮箱，不能自己注册成这个账号。密码不写进仓库：种子脚本读取 `ADMIN_SEED_PASSWORD`，并用与注册相同的 bcrypt 哈希后写入。
+
+```bash
+npx prisma migrate deploy
+ADMIN_SEED_PASSWORD='至少 8 位的密码' npm run seed:admin
+```
+
+然后用 `9999` 和这个密码登录，打开 `/admin`。`DATABASE_URL` 可以在环境变量里，也可以在 `.env`（脚本会补上尚未设置的变量）。再次执行会更新该账号的密码和管理员标记，并把剩余额度设回 10000。
+
 ## 离线解析与模型
 
 - **离线**：`OPENAI_API_KEY` 为空。按标签和表格做确定性解析，同一份文本每次结果相同。结果页和工作台都会说明当前是离线解析。
@@ -129,7 +143,7 @@ npm run lint
 
 ## 目录
 
-- `src/app`：页面与接口（注册、登录、工作台、额度、结果、下载）
+- `src/app`：页面与接口（注册、登录、工作台、额度、管理、结果、下载）
 - `src/lib/parsers`：离线解析
 - `src/lib/extract.ts`：模型调用与回退
 - `src/lib/quota.ts`：免费额度、扣次、收款码订单与核对入账
