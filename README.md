@@ -102,10 +102,10 @@ curl -X POST http://localhost:3000/api/admin/credits \
 
 ```bash
 npx prisma migrate deploy
-ADMIN_SEED_PASSWORD='至少 8 位的密码' npm run seed:admin
+ADMIN_SEED_PASSWORD="$ADMIN_SEED_PASSWORD" npm run seed:admin
 ```
 
-然后用 `9999` 和这个密码登录，打开 `/admin`。`DATABASE_URL` 可以在环境变量里，也可以在 `.env`（脚本会补上尚未设置的变量）。再次执行会更新该账号的密码和管理员标记，并把剩余额度设回 10000。
+然后用 `9999` 和 `ADMIN_SEED_PASSWORD` 登录，打开 `/admin`。`DATABASE_URL` 可以在环境变量里，也可以在 `.env`（脚本会补上尚未设置的变量）。再次执行会更新该账号的密码和管理员标记，并把剩余额度设回 10000。
 
 ## 离线解析与模型
 
