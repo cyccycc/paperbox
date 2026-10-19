@@ -42,8 +42,10 @@ export function AuthForm({
         <input
           className="w-full rounded-xl border border-line bg-white px-3 py-2.5 outline-none focus:border-seal"
           name="email"
-          type="email"
+          type={isRegister ? "email" : "text"}
           autoComplete="email"
+          inputMode="email"
+          spellCheck={false}
           required
         />
       </label>

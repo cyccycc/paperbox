@@ -13,7 +13,8 @@
     "test": "tsx --test tests/*.test.ts",
     "postinstall": "prisma generate",
     "samples": "node scripts/generate-sample-pdfs.mjs",
-    "grant": "node --env-file=.env --import tsx scripts/grant-credits.ts"
+    "grant": "node --env-file=.env --import tsx scripts/grant-credits.ts",
+    "seed:admin": "node --import tsx scripts/seed-admin.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",

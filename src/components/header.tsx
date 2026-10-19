@@ -4,9 +4,13 @@ import { prisma } from "@/lib/db";
 
 export async function Header() {
   const session = await getSession();
-  const credits = session
-    ? (await prisma.user.findUnique({ where: { id: session.uid }, select: { credits: true } }))?.credits
-    : undefined;
+  const account = session
+    ? await prisma.user.findUnique({
+        where: { id: session.uid },
+        select: { credits: true, isAdmin: true },
+      })
+    : null;
+  const credits = account?.credits;
 
   return (
     <header className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-5">
@@ -37,6 +41,11 @@ export async function Header() {
             <Link href="/dashboard" className="rounded-full px-3 py-2 hover:bg-white/70">
               工作台
             </Link>
+            {account?.isAdmin ? (
+              <Link href="/admin" className="rounded-full px-3 py-2 hover:bg-white/70">
+                管理
+              </Link>
+            ) : null}
             <form action="/api/auth/logout" method="post">
               <button className="rounded-full border border-line bg-sheet px-3 py-2 hover:border-seal hover:text-seal" type="submit">
                 退出
