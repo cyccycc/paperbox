@@ -9,7 +9,7 @@ export async function Header() {
     : undefined;
 
   return (
-    <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-5 py-5">
+    <header className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-5">
       <Link href={session ? "/dashboard" : "/"} className="flex items-center gap-3">
         <span className="seal" aria-hidden>
           匣
@@ -19,7 +19,10 @@ export async function Header() {
           <span className="mt-1 block text-xs tracking-wide text-ink-soft">Paperbox</span>
         </span>
       </Link>
-      <nav className="flex flex-wrap items-center justify-end gap-2 text-sm">
+      <nav className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2 text-sm">
+        <Link href="/blog" className="rounded-full px-3 py-2 hover:bg-white/70">
+          教程
+        </Link>
         {session ? (
           <>
             <span className="hidden max-w-48 truncate text-ink-soft sm:inline">{session.email}</span>
