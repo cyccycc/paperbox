@@ -26,6 +26,7 @@ npm run dev
 | `DATABASE_URL` | SQLite 连接串，默认 `file:./dev.db`（相对 `prisma/` 目录） |
 | `AUTH_SECRET` | 登录会话签名。生产环境请换成足够长的随机字符串。变量名是 `AUTH_SECRET`，不是 `SESSION_SECRET` |
 | `COOKIE_SECURE` | 登录 Cookie 是否带 `Secure`。只有设为 `true` 才开启。纯 HTTP 反向代理请保持 `false`（或留空），否则浏览器不保存 Cookie，登录后会回到 `/login`。站点改为 HTTPS 后再设为 `true` |
+| `AUTH_URL` | 可选。退出登录的站点根地址，例如 `https://paper.cyccycc.xyz`。只有请求 Host 仍是本机地址时，生产进程才会用它。代理已转发公网 Host 时留空，退出会回到用户当时打开的那个主机。也接受 `NEXTAUTH_URL` 作为别名。本地开发留空 |
 | `OPENAI_API_KEY` | DeepSeek（或其他 OpenAI 兼容服务）的密钥。留空则只用离线解析 |
 | `OPENAI_BASE_URL` | OpenAI 兼容接口根路径，**必须包含 `/v1`**。默认 `https://api.deepseek.com/v1` |
 | `OPENAI_MODEL` | 模型名。默认 `deepseek-flash`（当前推荐的 DeepSeek 对话模型） |
@@ -38,6 +39,22 @@ npm run dev
 纸匣请求 `${OPENAI_BASE_URL}/chat/completions`，不会再追加一层 `/v1`。
 
 登录 Cookie 始终是 `httpOnly`、`sameSite=lax`。`Secure` 不跟 `NODE_ENV` 走：反向代理用明文 HTTP 时（例如还没上 TLS），生产进程如果发出 `Secure` Cookie，浏览器会丢掉它，登录看起来成功，下一跳又回到 `/login`。对外是 HTTPS 之后，把 `COOKIE_SECURE` 设为 `true` 并重启。会话仍由 `AUTH_SECRET` 签名。
+
+## 反向代理
+
+`next start` 监听本机端口时，路由处理函数里的 `request.url` 是 `http://localhost:3000/...`，不是浏览器地址栏里的域名。退出如果拿这个地址做跳转，人会从公网站点被送到 localhost。
+
+退出接口改为看这次请求的公网主机，再跳回同一站点的 `/`。nginx 需要覆盖（不要追加）原始主机和协议：
+
+```nginx
+proxy_set_header Host $host;
+proxy_set_header X-Forwarded-Host $host;
+proxy_set_header X-Forwarded-Proto $scheme;
+```
+
+在 `https://paper.cyccycc.xyz` 点「退出」会回到 `https://paper.cyccycc.xyz/`。换一个域名打开时，也会留在那个域名上，不会写死某一个主机。
+
+纯 HTTP 的反代请带上 `X-Forwarded-Proto $scheme`，否则浏览器这次提交若是 HTTPS，退出会按 Origin 保持 HTTPS。代理如果只把 Host 设成 `localhost`，生产环境再设置 `AUTH_URL`（或别名 `NEXTAUTH_URL`）作为兜底，然后重启。本地开发不要设置。
 
 ## 接入 DeepSeek
 
