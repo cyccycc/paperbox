@@ -80,6 +80,21 @@ export function paymentQrMap(
   };
 }
 
+/** temporary: hide WeChat until merchant ready */
+export const SHOW_WECHAT_PAY = false;
+
+/** Channels offered on the purchase page. WeChat stays hidden while SHOW_WECHAT_PAY is false. */
+export function offeredPayChannels(
+  qr: Record<PayChannel, string | null>,
+  alipayOnline = false,
+): PayChannel[] {
+  const channels: PayChannel[] = ["wechat", "alipay"];
+  return channels.filter((channel) => {
+    if (channel === "wechat" && !SHOW_WECHAT_PAY) return false;
+    return (channel === "alipay" && alipayOnline) || Boolean(qr[channel]);
+  });
+}
+
 export function freeQuota(env: Record<string, string | undefined> = process.env): number {
   const raw = (env.FREE_QUOTA ?? "").trim();
   if (!/^\d+$/.test(raw)) return DEFAULT_FREE_QUOTA;

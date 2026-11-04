@@ -8,13 +8,13 @@ import {
   formatCny,
   formatShanghai,
   isPayChannel,
+  offeredPayChannels,
   orderStatusLabel,
+  SHOW_WECHAT_PAY,
   type BillingOrder,
   type CreditPack,
   type PayChannel,
 } from "@/lib/billing";
-
-const CHANNELS: PayChannel[] = ["wechat", "alipay"];
 
 function payName(channel: string): string {
   if (channel === "wechat") return "微信";
@@ -52,7 +52,8 @@ export function BillingPanel({
   const dialogRef = useRef<HTMLDivElement>(null);
 
   const active = rows.find((order) => order.id === activeId) ?? null;
-  const channels = CHANNELS.filter((channel) => (channel === "alipay" && alipayOnline) || qr[channel]);
+  const channels = offeredPayChannels(qr, alipayOnline);
+  const showWechat = channels.includes("wechat");
   const activeChannel = active && isPayChannel(active.channel) ? active.channel : null;
   const onlineAlipay = Boolean(active && alipayOnline && active.channel === "alipay");
   const choosingPack = CREDIT_PACKS.find((pack) => pack.id === choosingPackId) ?? null;
@@ -172,14 +173,15 @@ export function BillingPanel({
       {alipayOnline ? (
         <p className="text-sm leading-6 text-ink-soft">
           当前剩余 <span className="font-medium text-ink">{credits} 次</span>
-          。点「购买」后{qr.wechat
+          。点「购买」后{showWechat
             ? "选择支付方式。支付宝会打开收银台，付完次数自动到账。微信支付是个人收款码，金额要自己填，再点「我已付款」，核对后才会增加额度。"
             : "会打开支付宝收银台。付完次数自动到账，同一订单不会重复增加。"}
         </p>
       ) : (
         <p className="text-sm leading-6 text-ink-soft">
           当前剩余 <span className="font-medium text-ink">{credits} 次</span>
-          。点「购买」，选择微信支付或支付宝，再扫该渠道的收款码。金额请手动输入，然后点「我已付款」。核对前不会增加额度。
+          。点「购买」{showWechat ? "，选择微信支付或支付宝，再扫该渠道的收款码" : "后扫支付宝收款码"}
+          。金额请手动输入，然后点「我已付款」。核对前不会增加额度。
         </p>
       )}
       {notice ? (
@@ -221,7 +223,7 @@ export function BillingPanel({
         })}
       </div>
 
-      {active ? (
+      {active && (SHOW_WECHAT_PAY || active.channel !== "wechat") ? (
         <section ref={payRef} id="pay" className="sheet rounded-2xl p-5">
           {onlineAlipay ? (
             <>
@@ -347,7 +349,7 @@ export function BillingPanel({
                       >
                         {pending === `alipay:${order.id}` ? "正在打开…" : "去支付宝付款"}
                       </button>
-                    ) : (
+                    ) : !SHOW_WECHAT_PAY && order.channel === "wechat" ? null : (
                       <button
                         type="button"
                         className="rounded-full border border-line bg-white px-3 py-1 text-ink hover:border-seal hover:text-seal"
