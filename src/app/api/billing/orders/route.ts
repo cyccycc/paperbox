@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { alipayCheckoutUrl, discardPendingOrder } from "@/lib/alipay";
+import { ALIPAY_CHECKOUT_MESSAGE, alipayMerchantConfigured } from "@/lib/alipay-config";
 import { toBillingOrder } from "@/lib/billing";
 import { getSession } from "@/lib/current-user";
 import { prisma } from "@/lib/db";
@@ -23,6 +25,19 @@ export async function POST(request: Request) {
     channel: typeof body.channel === "string" ? body.channel : "",
   });
   if (!created.ok) return NextResponse.json({ error: created.error }, { status: created.status });
+
+  if (created.order.channel === "alipay" && alipayMerchantConfigured()) {
+    const pay = alipayCheckoutUrl(request, created.order);
+    if (!pay.ok) {
+      await discardPendingOrder(prisma, created.order.id);
+      return NextResponse.json({ error: pay.error }, { status: pay.status });
+    }
+    return NextResponse.json({
+      message: ALIPAY_CHECKOUT_MESSAGE,
+      order: toBillingOrder(created.order),
+      payUrl: pay.url,
+    });
+  }
 
   return NextResponse.json({
     message: created.message,

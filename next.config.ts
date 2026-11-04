@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@prisma/client", "bcryptjs", "exceljs", "unpdf"],
+  serverExternalPackages: ["@prisma/client", "alipay-sdk", "bcryptjs", "exceljs", "unpdf"],
 };
 
 export default nextConfig;

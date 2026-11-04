@@ -2,6 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { readSession, SESSION_COOKIE } from "./lib/session";
 
 export async function middleware(request: NextRequest) {
+  // Alipay calls notify with no session. The browser return must settle even if the cookie is missing.
+  const pathname = request.nextUrl.pathname;
+  if (pathname === "/api/billing/alipay/notify" || pathname === "/api/billing/alipay/return") {
+    return NextResponse.next();
+  }
+
   const session = await readSession(request.cookies.get(SESSION_COOKIE)?.value);
   if (session) return NextResponse.next();
 

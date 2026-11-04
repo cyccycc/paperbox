@@ -2,6 +2,8 @@
 
 把支付宝、微信的个人收款码图片放在这个目录，再在 `.env` 里写上路径。购买页只显示已配置的渠道。
 
+如果 `.env` 里配齐了支付宝商户参数（`ALIPAY_APP_ID`、`ALIPAY_PRIVATE_KEY`、`ALIPAY_PUBLIC_KEY`），支付宝会打开收银台，不再显示这里的支付宝收款码。微信没有商户接口，还是用收款码。三项没配齐时，支付宝仍用这里的个人收款码。
+
 ```bash
 # public/pay/alipay.png 与 public/pay/wechat.png
 PAYMENT_ALIPAY_QR_URL="/pay/alipay.png"

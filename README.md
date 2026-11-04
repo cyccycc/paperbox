@@ -31,8 +31,16 @@ npm run dev
 | `OPENAI_BASE_URL` | OpenAI 兼容接口根路径，**必须包含 `/v1`**。默认 `https://api.deepseek.com/v1` |
 | `OPENAI_MODEL` | 模型名。默认 `deepseek-flash`（当前推荐的 DeepSeek 对话模型） |
 | `FREE_QUOTA` | 新用户免费成功提取次数，默认 `10`。注册时写入账号，之后改这个值不会改已有账号 |
-| `PAYMENT_ALIPAY_QR_URL` | 支付宝个人收款码。站点路径（如 `/pay/alipay.png`）或 https 图片地址。留空则不显示 |
+| `PAYMENT_ALIPAY_QR_URL` | 支付宝个人收款码。站点路径（如 `/pay/alipay.png`）或 https 图片地址。留空则不显示。商户收银台开启后，支付宝不再用这张图 |
 | `PAYMENT_WECHAT_QR_URL` | 微信个人收款码。用法同上 |
+| `ALIPAY_APP_ID` | 支付宝网页应用 APPID。与下面两项私钥、支付宝公钥一起填上，才走电脑网站支付 / 手机网站支付 |
+| `ALIPAY_PRIVATE_KEY` | 应用私钥（PKCS8 或 PKCS1）。不要提交真实私钥 |
+| `ALIPAY_PRIVATE_KEY_TYPE` | 无私钥 PEM 头时的格式，`PKCS8`（默认）或 `PKCS1` |
+| `ALIPAY_PUBLIC_KEY` | 支付宝公钥，不是应用公钥 |
+| `ALIPAY_GATEWAY` | 可选。默认 `https://openapi.alipay.com/gateway.do`。沙箱只能用 `https://openapi-sandbox.dl.alipaydev.com/gateway.do` |
+| `ALIPAY_NOTIFY_URL` | 可选。异步通知，必须是 https。留空则用当前 https 站点的 `/api/billing/alipay/notify` |
+| `ALIPAY_RETURN_URL` | 可选。付完回跳，必须是 https。留空则用 `/api/billing/alipay/return` |
+| `ALIPAY_SELLER_ID` | 可选。2088 开头的收款支付宝用户号。填了就会在通知里核对 |
 | `ADMIN_GRANT_SECRET` | 可选。发放额度，以及把「我已付款」的订单标成已支付。**不是**支付商户密钥。留空则管理接口关闭 |
 | `ADMIN_SEED_PASSWORD` | 仅 `npm run seed:admin` 使用。写入账号 `9999` 的密码，至少 8 位。不要提交真实密码 |
 
@@ -74,7 +82,15 @@ proxy_set_header X-Forwarded-Proto $scheme;
 
 新用户按 `FREE_QUOTA` 获得免费次数（默认 10）。发票、合同、简历每次**成功**提取消耗 1 次。读不出文字的 PDF 会留下记录，但不扣额度。工作台显示剩余次数。
 
-剩余 0 次时，上传会停住，并给出「购买额度」。额度页 `/billing` 列出 50 次（¥29）和 200 次（¥99）。把个人收款码放到 `public/pay/`（说明见该目录 README），或设置 `PAYMENT_ALIPAY_QR_URL` / `PAYMENT_WECHAT_QR_URL`；改完后重启。用户选择次数包后生成待支付订单并看到收款码，扫码手动付款，再点「我已付款」留下备注。核对入账后次数才会增加。当前不接支付宝或微信的商户接口。
+剩余 0 次时，上传会停住，并给出「购买额度」。额度页 `/billing` 列出 50 次（¥29）和 200 次（¥99）。
+
+个人收款码：把图片放到 `public/pay/`（说明见该目录 README），或设置 `PAYMENT_ALIPAY_QR_URL` / `PAYMENT_WECHAT_QR_URL`。用户点次数包后生成待支付订单，扫码并自己填写金额，再点「我已付款」。核对入账后次数才会增加。微信一直走这条路径。
+
+支付宝收银台：`ALIPAY_APP_ID`、`ALIPAY_PRIVATE_KEY`、`ALIPAY_PUBLIC_KEY` 都填写，且异步通知地址是 https 时，购买页的支付宝改为跳转收银台。电脑浏览器走 `alipay.trade.page.pay`（`FAST_INSTANT_TRADE_PAY`），手机浏览器走 `alipay.trade.wap.pay`（`QUICK_WAP_WAY`）。金额和次数用上面的套餐，不会另定价格。异步通知和付完回跳都会验支付宝签名，金额、应用号和订单一致才入账，同一订单不会重复加次数。通知没到时，用户仍可以点「我已付款」，由原来的核对流程补上。三项商户配置缺任意一项时，不走收银台，购买页保持原来的收款码流程。
+
+开放平台用公钥模式。通知地址示例：`https://paper.cyccycc.xyz/api/billing/alipay/notify`。回跳示例：`https://paper.cyccycc.xyz/api/billing/alipay/return`。如果开放平台要求服务器出口 IP，填 `129.211.212.205`。改完 `.env` 后重启。不要把私钥或支付宝公钥写进仓库。
+
+冒烟：用普通账号打开 `/billing`，买现有的 50 次或 200 次，选支付宝，浏览器应打开 `openapi.alipay.com`。付完回到购买页，剩余次数增加该套餐的次数；再刷新一次，次数不变。清空三项商户配置并重启后，支付宝恢复收款码和「我已付款」。
 
 已有账号在这次迁移里会得到 10 次，和当时的 `FREE_QUOTA` 无关。
 
@@ -163,6 +179,7 @@ npm run lint
 - `src/app`：页面与接口（注册、登录、工作台、额度、管理、结果、下载）
 - `src/lib/parsers`：离线解析
 - `src/lib/extract.ts`：模型调用与回退
-- `src/lib/quota.ts`：免费额度、扣次、收款码订单与核对入账
+- `src/lib/quota.ts`：免费额度、扣次、订单与入账
+- `src/lib/alipay.ts`：支付宝收银台、通知验签与入账
 - `prisma/`：SQLite 模型与迁移
 - `uploads/`：上传文件，不入库
