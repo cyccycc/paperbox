@@ -308,12 +308,17 @@ export async function listClaimedOrders(db: PrismaClient): Promise<ClaimedOrder[
 
 export async function settleOrder(
   db: PrismaClient,
-  input: { orderId: string; action: string },
+  input: { orderId: string; action: string; providerTradeNo?: string; ledgerNote?: string },
 ): Promise<OrderResult> {
   if (input.action !== "mark_paid" && input.action !== "cancel") {
     return { ok: false, error: "action 只能是 mark_paid 或 cancel。", status: 400 };
   }
   if (!input.orderId) return { ok: false, error: "请提供订单号。", status: 400 };
+  const tradeNo =
+    input.providerTradeNo && /^[0-9A-Za-z]{1,64}$/.test(input.providerTradeNo)
+      ? input.providerTradeNo
+      : undefined;
+  const ledgerNote = input.ledgerNote?.trim().slice(0, 200) || "订单标记为已支付";
 
   try {
     return await db.$transaction(async (tx): Promise<OrderResult> => {
@@ -336,6 +341,9 @@ export async function settleOrder(
       }
 
       if (order.status === ORDER_PAID) {
+        if (tradeNo && !order.providerTradeNo) {
+          await tx.order.update({ where: { id: order.id }, data: { providerTradeNo: tradeNo } });
+        }
         return { ok: true, orderId: order.id, status: ORDER_PAID, credits: await balanceOf() };
       }
       if (order.status !== ORDER_PENDING) {
@@ -344,7 +352,7 @@ export async function settleOrder(
 
       const updated = await tx.order.updateMany({
         where: { id: order.id, status: ORDER_PENDING },
-        data: { status: ORDER_PAID },
+        data: { status: ORDER_PAID, ...(tradeNo ? { providerTradeNo: tradeNo } : {}) },
       });
       if (updated.count !== 1) {
         const again = await tx.order.findUnique({ where: { id: order.id } });
@@ -364,7 +372,7 @@ export async function settleOrder(
           delta: order.credits,
           reason: "order",
           orderId: order.id,
-          note: "订单标记为已支付",
+          note: ledgerNote,
         },
       });
       return { ok: true, orderId: order.id, status: ORDER_PAID, credits: await balanceOf() };

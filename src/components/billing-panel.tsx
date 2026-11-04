@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
+import { isAlipayCheckoutUrl } from "@/lib/alipay-public";
 import {
   channelLabel,
   CREDIT_PACKS,
@@ -30,16 +31,20 @@ export function BillingPanel({
   credits,
   orders,
   qr,
+  alipayOnline = false,
+  banner = "",
 }: {
   credits: number;
   orders: BillingOrder[];
   qr: Record<PayChannel, string | null>;
+  alipayOnline?: boolean;
+  banner?: string;
 }) {
   const [rows, setRows] = useState(orders);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [choosingPackId, setChoosingPackId] = useState<string | null>(null);
   const [note, setNote] = useState("");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(banner);
   const [error, setError] = useState("");
   const [pending, setPending] = useState("");
   const [broken, setBroken] = useState<Partial<Record<PayChannel, boolean>>>({});
@@ -47,8 +52,9 @@ export function BillingPanel({
   const dialogRef = useRef<HTMLDivElement>(null);
 
   const active = rows.find((order) => order.id === activeId) ?? null;
-  const channels = CHANNELS.filter((channel) => qr[channel]);
+  const channels = CHANNELS.filter((channel) => (channel === "alipay" && alipayOnline) || qr[channel]);
   const activeChannel = active && isPayChannel(active.channel) ? active.channel : null;
+  const onlineAlipay = Boolean(active && alipayOnline && active.channel === "alipay");
   const choosingPack = CREDIT_PACKS.find((pack) => pack.id === choosingPackId) ?? null;
   const activeQr = activeChannel ? qr[activeChannel] : null;
 
@@ -85,7 +91,7 @@ export function BillingPanel({
       body: JSON.stringify({ packId, channel }),
     });
     const payload = (await response.json().catch(() => null)) as
-      | { message?: string; error?: string; order?: BillingOrder }
+      | { message?: string; error?: string; order?: BillingOrder; payUrl?: string }
       | null;
     setPending("");
     if (response.status === 401) {
@@ -99,7 +105,38 @@ export function BillingPanel({
     setChoosingPackId(null);
     setNotice(payload.message || "订单已创建。");
     setRows((current) => [payload.order as BillingOrder, ...current]);
+    if (payload.payUrl) {
+      if (!isAlipayCheckoutUrl(payload.payUrl)) {
+        setError("支付链接无效，请稍后再试。");
+        return;
+      }
+      window.location.assign(payload.payUrl);
+      return;
+    }
     focusOrder(payload.order);
+  }
+
+  async function openAlipay(orderId: string) {
+    setError("");
+    setNotice("");
+    setPending(`alipay:${orderId}`);
+    const response = await fetch(`/api/billing/orders/${orderId}/pay`, { method: "POST" });
+    const payload = (await response.json().catch(() => null)) as {
+      message?: string;
+      error?: string;
+      payUrl?: string;
+    } | null;
+    if (response.status === 401) {
+      window.location.href = "/login?next=/billing";
+      return;
+    }
+    if (!response.ok || !payload?.payUrl || !isAlipayCheckoutUrl(payload.payUrl)) {
+      setPending("");
+      setError(payload?.error || "暂时打不开支付宝，请稍后再试。");
+      return;
+    }
+    setNotice(payload.message || "正在打开支付宝。");
+    window.location.assign(payload.payUrl);
   }
 
   async function claim(event: FormEvent<HTMLFormElement>) {
@@ -132,10 +169,19 @@ export function BillingPanel({
 
   return (
     <div className="space-y-6">
-      <p className="text-sm leading-6 text-ink-soft">
-        当前剩余 <span className="font-medium text-ink">{credits} 次</span>
-        。点「购买」，选择微信支付或支付宝，再扫该渠道的收款码。金额请手动输入，然后点「我已付款」。核对前不会增加额度。
-      </p>
+      {alipayOnline ? (
+        <p className="text-sm leading-6 text-ink-soft">
+          当前剩余 <span className="font-medium text-ink">{credits} 次</span>
+          。点「购买」后{qr.wechat
+            ? "选择支付方式。支付宝会打开收银台，付完次数自动到账。微信支付是个人收款码，金额要自己填，再点「我已付款」，核对后才会增加额度。"
+            : "会打开支付宝收银台。付完次数自动到账，同一订单不会重复增加。"}
+        </p>
+      ) : (
+        <p className="text-sm leading-6 text-ink-soft">
+          当前剩余 <span className="font-medium text-ink">{credits} 次</span>
+          。点「购买」，选择微信支付或支付宝，再扫该渠道的收款码。金额请手动输入，然后点「我已付款」。核对前不会增加额度。
+        </p>
+      )}
       {notice ? (
         <p className="rounded-xl bg-moss-soft px-4 py-3 text-sm text-moss" role="status">
           {notice}
@@ -177,6 +223,31 @@ export function BillingPanel({
 
       {active ? (
         <section ref={payRef} id="pay" className="sheet rounded-2xl p-5">
+          {onlineAlipay ? (
+            <>
+              <h2 className="font-serif text-2xl">支付宝付款</h2>
+              <div className="mt-2 text-sm leading-6 text-ink-soft">
+                <p>
+                  金额 <span className="font-medium text-ink">{formatCny(active.amountCents)}</span>
+                  。点「去支付宝付款」打开收银台，付完次数自动到账。
+                </p>
+                <p className="mt-1">
+                  订单号 <span className="font-medium text-ink">{active.id}</span>
+                </p>
+              </div>
+              {active.status === "pending" ? (
+                <button
+                  className="mt-4 rounded-full bg-seal px-4 py-2 text-sm text-white hover:bg-seal-deep disabled:opacity-60"
+                  type="button"
+                  disabled={Boolean(pending)}
+                  onClick={() => void openAlipay(active.id)}
+                >
+                  {pending === `alipay:${active.id}` ? "正在打开…" : "去支付宝付款"}
+                </button>
+              ) : null}
+            </>
+          ) : (
+            <>
           <h2 className="font-serif text-2xl">扫码付款</h2>
           <div className="mt-2 text-sm leading-6 text-ink-soft">
             <p>
@@ -213,8 +284,15 @@ export function BillingPanel({
           ) : (
             <p className="mt-4 text-sm text-warn">这个渠道的收款码还没配置。</p>
           )}
+            </>
+          )}
           {active.status === "pending" ? (
             <form onSubmit={claim} className="mt-5 max-w-md space-y-3">
+              {onlineAlipay ? (
+                <p className="text-sm text-ink-soft">
+                  支付成功后会自动加上次数。只有通知没到、次数一直没变化时，才需要留下备注让站长核对，不会重复增加。
+                </p>
+              ) : null}
               <label className="block text-sm" htmlFor="payment-note">
                 付款备注
                 <input
@@ -260,13 +338,24 @@ export function BillingPanel({
                     {orderStatusLabel(order.status, Boolean(order.claimedAt))} · {formatShanghai(order.createdAt)}
                   </span>
                   {order.status === "pending" ? (
-                    <button
-                      type="button"
-                      className="rounded-full border border-line bg-white px-3 py-1 text-ink hover:border-seal hover:text-seal"
-                      onClick={() => focusOrder(order)}
-                    >
-                      查看收款码
-                    </button>
+                    alipayOnline && order.channel === "alipay" ? (
+                      <button
+                        type="button"
+                        className="rounded-full border border-line bg-white px-3 py-1 text-ink hover:border-seal hover:text-seal disabled:opacity-60"
+                        disabled={Boolean(pending)}
+                        onClick={() => void openAlipay(order.id)}
+                      >
+                        {pending === `alipay:${order.id}` ? "正在打开…" : "去支付宝付款"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="rounded-full border border-line bg-white px-3 py-1 text-ink hover:border-seal hover:text-seal"
+                        onClick={() => focusOrder(order)}
+                      >
+                        查看收款码
+                      </button>
+                    )
                   ) : null}
                 </span>
               </li>
