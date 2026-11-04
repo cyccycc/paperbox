@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BillingPanel } from "@/components/billing-panel";
 import { alipayMerchantConfigured } from "@/lib/alipay-config";
-import { paymentQrMap, toBillingOrder } from "@/lib/billing";
+import { offeredPayChannels, paymentQrMap, toBillingOrder } from "@/lib/billing";
 import { getSession } from "@/lib/current-user";
 import { prisma } from "@/lib/db";
 
@@ -42,6 +42,7 @@ export default async function BillingPage({
 
   const qr = paymentQrMap();
   const alipayOnline = alipayMerchantConfigured();
+  const showWechat = offeredPayChannels(qr, alipayOnline).includes("wechat");
 
   return (
     <div className="space-y-8 pt-2">
@@ -55,10 +56,12 @@ export default async function BillingPage({
         <h1 className="mt-2 font-serif text-4xl">购买额度</h1>
         <p className="mt-2 max-w-2xl text-ink-soft">
           {alipayOnline
-            ? qr.wechat
+            ? showWechat
               ? "选择 50 次或 200 次。支付宝会打开收银台，付完次数自动到账。微信支付仍是个人收款码，付完要点「我已付款」，核对后才会增加额度。"
               : "选择 50 次或 200 次。点「购买」后打开支付宝收银台，付完次数自动到账。"
-            : "选择 50 次或 200 次，点「购买」后选择微信支付或支付宝。付完点「我已付款」，核对后次数才会到账。"}
+            : showWechat
+              ? "选择 50 次或 200 次，点「购买」后选择微信支付或支付宝。付完点「我已付款」，核对后次数才会到账。"
+              : "选择 50 次或 200 次，点「购买」后扫支付宝收款码。付完点「我已付款」，核对后次数才会到账。"}
         </p>
       </div>
       <BillingPanel

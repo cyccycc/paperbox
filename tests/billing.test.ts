@@ -8,9 +8,11 @@ import {
   formatCny,
   freeQuota,
   isPayChannel,
+  offeredPayChannels,
   orderStatusLabel,
   paymentQrUrl,
   PAYMENT_SCAN_MESSAGE,
+  SHOW_WECHAT_PAY,
   QUOTA_EXHAUSTED_MESSAGE,
 } from "../src/lib/billing";
 
@@ -65,6 +67,16 @@ test("payment QR urls come from env and reject other schemes", () => {
   assert.equal(paymentQrUrl("alipay", { PAYMENT_ALIPAY_QR_URL: "//evil.example/qr.png" }), null);
   assert.equal(paymentQrUrl("alipay", { PAYMENT_ALIPAY_QR_URL: "/pay/../.env" }), null);
   assert.equal(paymentQrUrl("alipay", { PAYMENT_ALIPAY_QR_URL: "https://user:pass@cdn.example.com/a.png" }), null);
+});
+
+test("purchase page hides WeChat even when a QR url is set", () => {
+  assert.equal(SHOW_WECHAT_PAY, false);
+  const both = { alipay: "/pay/alipay.png", wechat: "/pay/wechat.png" };
+  assert.deepEqual(offeredPayChannels(both, true), ["alipay"]);
+  assert.deepEqual(offeredPayChannels(both, false), ["alipay"]);
+  assert.deepEqual(offeredPayChannels({ alipay: null, wechat: "/pay/wechat.png" }, true), ["alipay"]);
+  assert.deepEqual(offeredPayChannels({ alipay: null, wechat: "/pay/wechat.png" }, false), []);
+  assert.deepEqual(offeredPayChannels({ alipay: null, wechat: null }, false), []);
 });
 
 test("admin grant secret must match the bearer token", () => {

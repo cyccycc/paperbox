@@ -32,7 +32,7 @@ npm run dev
 | `OPENAI_MODEL` | 模型名。默认 `deepseek-flash`（当前推荐的 DeepSeek 对话模型） |
 | `FREE_QUOTA` | 新用户免费成功提取次数，默认 `10`。注册时写入账号，之后改这个值不会改已有账号 |
 | `PAYMENT_ALIPAY_QR_URL` | 支付宝个人收款码。站点路径（如 `/pay/alipay.png`）或 https 图片地址。留空则不显示。商户收银台开启后，支付宝不再用这张图 |
-| `PAYMENT_WECHAT_QR_URL` | 微信个人收款码。用法同上 |
+| `PAYMENT_WECHAT_QR_URL` | 微信个人收款码。用法同上。购买页暂时不展示微信，填了也不会出现 |
 | `ALIPAY_APP_ID` | 支付宝网页应用 APPID。与下面两项私钥、支付宝公钥一起填上，才走电脑网站支付 / 手机网站支付 |
 | `ALIPAY_PRIVATE_KEY` | 应用私钥（PKCS8 或 PKCS1）。不要提交真实私钥 |
 | `ALIPAY_PRIVATE_KEY_TYPE` | 无私钥 PEM 头时的格式，`PKCS8`（默认）或 `PKCS1` |
@@ -84,7 +84,7 @@ proxy_set_header X-Forwarded-Proto $scheme;
 
 剩余 0 次时，上传会停住，并给出「购买额度」。额度页 `/billing` 列出 50 次（¥29）和 200 次（¥99）。
 
-个人收款码：把图片放到 `public/pay/`（说明见该目录 README），或设置 `PAYMENT_ALIPAY_QR_URL` / `PAYMENT_WECHAT_QR_URL`。用户点次数包后生成待支付订单，扫码并自己填写金额，再点「我已付款」。核对入账后次数才会增加。微信一直走这条路径。
+个人收款码：把图片放到 `public/pay/`（说明见该目录 README），或设置 `PAYMENT_ALIPAY_QR_URL` / `PAYMENT_WECHAT_QR_URL`。用户点次数包后生成待支付订单，扫码并自己填写金额，再点「我已付款」。核对入账后次数才会增加。购买页暂时不展示微信，填了 `PAYMENT_WECHAT_QR_URL` 也不会出现；支付宝收款码和收银台不受影响。
 
 支付宝收银台：`ALIPAY_APP_ID`、`ALIPAY_PRIVATE_KEY`、`ALIPAY_PUBLIC_KEY` 都填写，且异步通知地址是 https 时，购买页的支付宝改为跳转收银台。电脑浏览器走 `alipay.trade.page.pay`（`FAST_INSTANT_TRADE_PAY`），手机浏览器走 `alipay.trade.wap.pay`（`QUICK_WAP_WAY`）。金额和次数用上面的套餐，不会另定价格。异步通知和付完回跳都会验支付宝签名，金额、应用号和订单一致才入账，同一订单不会重复加次数。通知没到时，用户仍可以点「我已付款」，由原来的核对流程补上。三项商户配置缺任意一项时，不走收银台，购买页保持原来的收款码流程。
 
