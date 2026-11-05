@@ -14,6 +14,12 @@ export const posts: BlogPost[] = [
     description:
       "电子发票还在手抄进 Excel？上传有文字层的 PDF/TXT/MD，核对后下载概览+明细表。新用户免费 10 次。",
   },
+  {
+    slug: "invoice-reconciliation-excel",
+    title: "月底发票对账：PDF 怎么整理进 Excel（不用手抄）",
+    description:
+      "月底要对账，发票还是 PDF？有文字层的文件可抽成概览+明细进 Excel。一次 1 份，新用户免费 10 次。",
+  },
 ];
 
 export function findPost(slug: string): BlogPost | undefined {
