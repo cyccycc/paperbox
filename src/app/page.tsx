@@ -82,10 +82,17 @@ export default function HomePage() {
         </article>
       </section>
 
-      <footer className="text-sm text-ink-soft">
-        <Link href="/blog/invoice-pdf-to-excel" className="underline-offset-2 hover:text-seal hover:underline">
-          教程：电子发票 PDF 怎么抽成表格
-        </Link>
+      <footer className="space-y-2 text-sm text-ink-soft">
+        <p>
+          <Link href="/blog/invoice-pdf-to-excel" className="underline-offset-2 hover:text-seal hover:underline">
+            教程：电子发票 PDF 怎么抽成表格
+          </Link>
+        </p>
+        <p>
+          <Link href="/blog/invoice-reconciliation-excel" className="underline-offset-2 hover:text-seal hover:underline">
+            教程：月底发票对账：PDF 怎么整理进 Excel
+          </Link>
+        </p>
       </footer>
     </div>
   );
